@@ -1,8 +1,10 @@
 import axios from 'axios';
 
-// Create a single axios instance for the entire app
+// Create a single axios instance for the entire app 
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://insta-chat-app-q97o.onrender.com/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: BASE_URL,
   withCredentials: true
 });
 
@@ -45,7 +47,7 @@ export const setupAxiosInterceptors = (navigate) => {
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          const res = await axios.post('http://localhost:5000/api/auth/refresh-token', {}, {
+          const res = await axios.post(`${BASE_URL}/auth/refresh-token`, {}, {
             withCredentials: true
           });
           const { accessToken } = res.data;
