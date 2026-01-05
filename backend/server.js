@@ -16,11 +16,25 @@ try { morgan = require('morgan'); app.use(morgan('dev')); } catch (e) {}
 app.use(express.json());
 app.use(cookieParser());
 
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+// Define allowed origins
+const allowedOrigins = [
+  process.env.FRONTEND_ORIGIN,
+  'https://insta-chat-app-five.vercel.app',
+  'http://localhost:5173'
+].filter(Boolean); // Remove any falsy values (like undefined if FRONTEND_ORIGIN is not set)
 
-// CORS configuration - Simplified to fix the crash
+// CORS configuration
 const corsOptions = {
-  origin: FRONTEND_ORIGIN,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Socket-ID'],
   credentials: true,
@@ -29,18 +43,6 @@ const corsOptions = {
 
 // Apply CORS middleware to all routes
 app.use(cors(corsOptions));
-
-// Explicitly handle preflight for all routes
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Socket-ID');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    return res.status(204).end();
-  }
-  next();
-});
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -64,10 +66,18 @@ const server = http.createServer(app);
 // Enhanced Socket.io configuration with CORS and additional options
 const io = new Server(server, {
   cors: {
-    origin: FRONTEND_ORIGIN,
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Socket-ID'],
+    credentials: true
   },
   transports: ['websocket', 'polling'],
   pingTimeout: 10000,
