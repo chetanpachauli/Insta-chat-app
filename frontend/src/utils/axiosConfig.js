@@ -1,11 +1,15 @@
 import axios from 'axios';
 
 // Create a single axios instance for the entire app 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://insta-chat-app-q97o.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://insta-chat-app-q97o.onrender.com';
 
 const api = axios.create({
-  baseURL: BASE_URL,
-  withCredentials: true
+  baseURL: `${BASE_URL}/api`, // Ensure all requests are prefixed with /api
+  withCredentials: true, // Required for cookies to be sent cross-origin
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
 });
 
 let interceptorsSetUp = false;
@@ -47,8 +51,11 @@ export const setupAxiosInterceptors = (navigate) => {
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          const res = await axios.post(`${BASE_URL}/auth/refresh-token`, {}, {
-            withCredentials: true
+          const res = await axios.post(`${BASE_URL}/api/auth/refresh-token`, {}, {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           });
           const { accessToken } = res.data;
           localStorage.setItem('token', accessToken);
@@ -76,4 +83,4 @@ export const setupAxiosInterceptors = (navigate) => {
   };
 };
 
-export default api; // Is 'api' ko hi ChatContext mein import karna
+export default api; 

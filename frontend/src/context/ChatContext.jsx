@@ -7,553 +7,535 @@ import { toast } from 'react-hot-toast';
 const ChatContext = createContext(null);
 
 const ChatProvider = ({ children }) => {
-  const { user } = useAuth();
-  const socketRef = useRef(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState({});
-  const [typingUsers, setTypingUsers] = useState({});
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [sidebarUsers, setSidebarUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const { user } = useAuth();
+  const socketRef = useRef(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState({});
+  const [typingUsers, setTypingUsers] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [sidebarUsers, setSidebarUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
-  const hasFetchedRef = useRef(false);
-  const isFetchingRef = useRef(false);
-  const isSidebarFetchedRef = useRef(false);
-  const userId = user?.id || user?._id;
-  const userIdRef = useRef(userId);
-  const connectionAttemptRef = useRef(0);
-  const reconnectTimeoutRef = useRef(null);
-  const socketInitialized = useRef(false);
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isSidebarFetchedRef = useRef(false);
+  const userId = user?.id || user?._id;
+  const userIdRef = useRef(userId);
+  const connectionAttemptRef = useRef(0);
+  const reconnectTimeoutRef = useRef(null);
+  const socketInitialized = useRef(false);
 
-  useEffect(() => {
-    if (userId && userId !== userIdRef.current) {
-      userIdRef.current = userId;
-      hasFetchedRef.current = false;
-      isSidebarFetchedRef.current = false; // Reset fetch flag when user changes
-    }
-  }, [userId]);
+  useEffect(() => {
+    if (userId && userId !== userIdRef.current) {
+      userIdRef.current = userId;
+      hasFetchedRef.current = false;
+      isSidebarFetchedRef.current = false; // Reset fetch flag when user changes
+    }
+  }, [userId]);
 
-  const fetchSidebarUsers = useCallback(async () => {
-    const currentUserId = userIdRef.current;
-    
-    if (isFetchingRef.current || !currentUserId) {
-      console.log('Fetch in progress or no user ID, skipping');
-      return;
-    }
-    
-    console.log('Initiating sidebar users fetch for user:', currentUserId);
-    isFetchingRef.current = true;
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.get(`/api/messages/users/${currentUserId}`);
-      console.log('Sidebar Data Success:', response.data);
-      
-      if (Array.isArray(response.data)) {
-        setSidebarUsers(response.data);
-        hasFetchedRef.current = true;
-      } else {
-        console.warn('Unexpected API response format:', response.data);
-        setSidebarUsers([]);
-      }
-      return response.data;
-    } catch (err) {
-      console.error('Error fetching sidebar users:', err);
-      setError(err.response?.data?.error || 'Failed to fetch users');
-      setSidebarUsers([]);
-      hasFetchedRef.current = false;
-      throw err;
-    } finally {
-      if (isFetchingRef.current) { // Only reset if we're still the active fetch
-        isFetchingRef.current = false;
-        setIsLoading(false);
-      }
-    }
-  }, []);
+  const fetchSidebarUsers = useCallback(async () => {
+    const currentUserId = userIdRef.current;
+    
+    if (isFetchingRef.current || !currentUserId) {
+      console.log('Fetch in progress or no user ID, skipping');
+      return;
+    }
 
-  useEffect(() => {
-    if (!userId || isSidebarFetchedRef.current) return;
+    try {
+      isFetchingRef.current = true;
+      const response = await api.get(`/messages/users/${currentUserId}`);
+      setSidebarUsers(response.data || []);
+    } catch (error) {
+      console.error('Error fetching sidebar users:', error);
+      setError('Failed to load chat list');
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [userIdRef]);
 
-    const fetchUsers = async () => {
-      if (isFetchingRef.current) return;
-      
-      isFetchingRef.current = true;
-      isSidebarFetchedRef.current = true;
-      
-      try {
-        console.log('Fetching sidebar users for user:', userId);
-        const response = await api.get(`/api/messages/users/${userId}`);
-        
-        if (Array.isArray(response.data)) {
-          setSidebarUsers(response.data);
-          hasFetchedRef.current = true;
-        }
-      } catch (error) {
-        console.error('Error fetching sidebar users:', error);
-        isSidebarFetchedRef.current = false; // Allow retry on error
-        setError(error.response?.data?.error || 'Failed to fetch users');
-      } finally {
-        isFetchingRef.current = false;
-      }
-    };
+  useEffect(() => {
+    if (!userId || isSidebarFetchedRef.current) return;
 
-    fetchUsers();
+    const fetchUsers = async () => {
+      if (isFetchingRef.current) return;
+      
+      isFetchingRef.current = true;
+      isSidebarFetchedRef.current = true;
+      
+      try {
+        console.log('Fetching sidebar users for user:', userId);
+        const response = await api.get(`/messages/users/${userId}`);
+        
+        if (Array.isArray(response.data)) {
+          setSidebarUsers(response.data);
+          hasFetchedRef.current = true;
+        }
+      } catch (error) {
+        console.error('Error fetching sidebar users:', error);
+        isSidebarFetchedRef.current = false; // Allow retry on error
+        setError(error.response?.data?.error || 'Failed to fetch users');
+      } finally {
+        isFetchingRef.current = false;
+      }
+    };
 
-    // No cleanup needed as we want to maintain the fetched state
-  }, [userId]); // Only depend on userId
+    fetchUsers();
 
-  const handleMessage = useCallback((message) => {
-    const chatId = String(message.chatId || message.senderId || message.receiverId);
-    
-    if (!chatId) {
-      console.error('Received message with no valid chat ID:', message);
-      return;
-    }
-    
-    setMessages(prev => {
-      const existingMessageIndex = (prev[chatId] || []).findIndex(
-        msg => msg._id === message._id || 
-              (msg._id && msg._id.startsWith('temp-') && 
-               msg.senderId === message.senderId && 
-               msg.createdAt === message.createdAt)
-      );
+    // No cleanup needed as we want to maintain the fetched state
+  }, [userId]); // Only depend on userId
 
-      if (existingMessageIndex >= 0) {
-        const updatedMessages = [...(prev[chatId] || [])];
-        updatedMessages[existingMessageIndex] = {
-          ...updatedMessages[existingMessageIndex],
-          ...message,
-          image: message.image || updatedMessages[existingMessageIndex].image
-        };
-        return {
-          ...prev,
-          [chatId]: updatedMessages
-        };
-      } else {
-        return {
-          ...prev,
-          [chatId]: [...(prev[chatId] || []), message]
-        };
-      }
-    });
-  }, []);
+  const handleMessage = useCallback((message) => {
+    const chatId = String(message.chatId || message.senderId || message.receiverId);
+    
+    if (!chatId) {
+      console.error('Received message with no valid chat ID:', message);
+      return;
+    }
+    
+    setMessages(prev => {
+      const existingMessageIndex = (prev[chatId] || []).findIndex(
+        msg => msg._id === message._id || 
+          (msg._id && msg._id.startsWith('temp-') && 
+            msg.senderId === message.senderId && 
+            msg.createdAt === message.createdAt)
+      );
 
-  const handleTyping = useCallback(({ chatId, userId }) => {
-    setTypingUsers(prev => ({
-      ...prev,
-      [chatId]: [...(prev[chatId] || []).filter(id => id !== userId), userId]
-    }));
-  }, []);
+      if (existingMessageIndex >= 0) {
+        const updatedMessages = [...(prev[chatId] || [])];
+        updatedMessages[existingMessageIndex] = {
+          ...updatedMessages[existingMessageIndex],
+          ...message,
+          image: message.image || updatedMessages[existingMessageIndex].image
+        };
+        return {
+          ...prev,
+          [chatId]: updatedMessages
+        };
+      } else {
+        return {
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), message]
+        };
+      }
+    });
+  }, []);
 
-  const handleStopTyping = useCallback(({ chatId, userId }) => {
-    setTypingUsers(prev => ({
-      ...prev,
-      [chatId]: (prev[chatId] || []).filter(id => id !== userId)
-    }));
-  }, []);
+  const handleTyping = useCallback(({ chatId, userId }) => {
+    setTypingUsers(prev => ({
+      ...prev,
+      [chatId]: [...(prev[chatId] || []).filter(id => id !== userId), userId]
+    }));
+  }, []);
 
-  const handleUserOnline = useCallback((userId) => {
-    setOnlineUsers(prev => {
-      if (!prev.includes(userId)) {
-        return [...prev, userId];
-      }
-      return prev;
-    });
-  }, []);
+  const handleStopTyping = useCallback(({ chatId, userId }) => {
+    setTypingUsers(prev => ({
+      ...prev,
+      [chatId]: (prev[chatId] || []).filter(id => id !== userId)
+    }));
+  }, []);
 
-  const handleUserOffline = useCallback((userId) => {
-    setOnlineUsers(prev => prev.filter(id => id !== userId));
-  }, []);
+  const handleUserOnline = useCallback((userId) => {
+    setOnlineUsers(prev => {
+      if (!prev.includes(userId)) {
+        return [...prev, userId];
+      }
+      return prev;
+    });
+  }, []);
 
-  useEffect(() => {
-    // Initialize axios interceptors
-    const cleanupInterceptors = setupAxiosInterceptors();
-    return () => cleanupInterceptors();
-  }, []);
+  const handleUserOffline = useCallback((userId) => {
+    setOnlineUsers(prev => prev.filter(id => id !== userId));
+  }, []);
 
-  // WebSocket connection management
-  useEffect(() => {
-    // Skip if no user ID or if socket is already initialized
-    if (!userId || socketInitialized.current) return;
-    
-    // Prevent multiple initializations
-    if (socketRef.current?.connected) {
-      console.log('WebSocket already connected');
-      return;
-    }
+  useEffect(() => {
+    // Initialize axios interceptors
+    const cleanupInterceptors = setupAxiosInterceptors();
+    return () => cleanupInterceptors();
+  }, []);
 
-    console.log(`Initializing WebSocket for user: ${userId}`);
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const serverUrl = baseUrl.replace('/api', ''); // Remove /api for WebSocket connection
-    
-    const socket = io(serverUrl, {
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
-      autoConnect: true,
-      transports: ['polling', 'websocket'],
-      query: { 
-        userId,
-        token: localStorage.getItem('token')
-      }
-    });
+  // WebSocket connection management
+  useEffect(() => {
+    // Skip if no user ID or if socket is already initialized
+    if (!userId || socketInitialized.current) return;
+    
+    // Prevent multiple initializations
+    if (socketRef.current?.connected) {
+      console.log('WebSocket already connected');
+      return;
+    }
 
-    // Store the socket instance in the ref
-    socketRef.current = socket;
+    console.log(`Initializing WebSocket for user: ${userId}`);
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const serverUrl = baseUrl.replace('/api', ''); // Remove /api for WebSocket connection
+    const socket = io(serverUrl, {
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
+      autoConnect: true,
+      transports: ['polling', 'websocket'],
+      query: { 
+        userId,
+        token: localStorage.getItem('token')
+      }
+    });
 
-    // Event handlers
-    const handleConnect = () => {
-      console.log('WebSocket connected with ID:', socket.id);
-      setIsConnected(true);
-      setConnectionStatus('connected');
-      connectionAttemptRef.current = 0;
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
+    // Store the socket instance in the ref
+    socketRef.current = socket;
 
-    const handleConnectError = (err) => {
-      console.error('Socket connection error:', err.message);
-      setConnectionStatus(`error: ${err.message}`);
-      
-      const attempt = connectionAttemptRef.current++;
-      const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
-      
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (socket && !socket.connected) {
-          console.log('Attempting to reconnect WebSocket...');
-          socket.connect();
-        }
-      }, delay);
-    };
+    // Event handlers
+    const handleConnect = () => {
+      console.log('WebSocket connected with ID:', socket.id);
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      connectionAttemptRef.current = 0;
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
 
-    const handleDisconnect = (reason) => {
-      console.log('WebSocket disconnected:', reason);
-      setIsConnected(false);
-      setConnectionStatus('disconnected');
-      
-      if (reason === 'io server disconnect') {
-        console.log('Server disconnected the socket. Attempting to reconnect...');
-        socket.connect();
-      }
-    };
+    const handleConnectError = (err) => {
+      console.error('Socket connection error:', err.message);
+      setConnectionStatus(`error: ${err.message}`);
+      
+      const attempt = connectionAttemptRef.current++;
+      const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+      
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (socket && !socket.connected) {
+          console.log('Attempting to reconnect WebSocket...');
+          socket.connect();
+        }
+      }, delay);
+    };
 
-    // Set up event listeners with named functions for proper cleanup
-    const eventHandlers = [
-      { event: 'connect', handler: handleConnect },
-      { event: 'connect_error', handler: handleConnectError },
-      { event: 'disconnect', handler: handleDisconnect },
-      { event: 'receiveMessage', handler: handleMessage },
-      { event: 'typing', handler: handleTyping },
-      { event: 'stopTyping', handler: handleStopTyping },
-      { event: 'userOnline', handler: handleUserOnline },
-      { event: 'userOffline', handler: handleUserOffline }
-    ];
+    const handleDisconnect = (reason) => {
+      console.log('WebSocket disconnected:', reason);
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      
+      if (reason === 'io server disconnect') {
+        console.log('Server disconnected the socket. Attempting to reconnect...');
+        socket.connect();
+      }
+    };
 
-    // Register all event listeners
-    eventHandlers.forEach(({ event, handler }) => {
-      socket.on(event, handler);
-    });
+    // Set up event listeners with named functions for proper cleanup
+    const eventHandlers = [
+      { event: 'connect', handler: handleConnect },
+      { event: 'connect_error', handler: handleConnectError },
+      { event: 'disconnect', handler: handleDisconnect },
+      { event: 'receiveMessage', handler: handleMessage },
+      { event: 'typing', handler: handleTyping },
+      { event: 'stopTyping', handler: handleStopTyping },
+      { event: 'userOnline', handler: handleUserOnline },
+      { event: 'userOffline', handler: handleUserOffline }
+    ];
 
-    // Mark socket as initialized
-    socketInitialized.current = true;
+    // Register all event listeners
+    eventHandlers.forEach(({ event, handler }) => {
+      socket.on(event, handler);
+    });
 
-    // Cleanup function
-    return () => {
-      console.log('Cleaning up WebSocket connection');
-      if (socketRef.current) {
-        // Remove all event listeners
-        eventHandlers.forEach(({ event, handler }) => {
-          socket.off(event, handler);
-        });
-        
-        // Clear any pending reconnection attempts
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-        
-        // Disconnect the socket if connected
-        if (socket.connected) {
-          socket.disconnect();
-        }
-        
-        // Reset refs
-        socketRef.current = null;
-        socketInitialized.current = false;
-      }
-    };
-  }, [userId]); // Only depend on userId as all handlers are stable
+    // Mark socket as initialized
+    socketInitialized.current = true;
 
-  // Handle user logout
-  useEffect(() => {
-    if (!userId && socketRef.current) {
-      console.log('User logged out, cleaning up WebSocket');
-      
-      // Disconnect the socket
-      if (socketRef.current.connected) {
-        socketRef.current.disconnect();
-      }
-      
-      // Clear any pending reconnection attempts
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      
-      // Clear the ref and update state
-      socketRef.current = null;
-      setIsConnected(false);
-      setConnectionStatus('disconnected');
-      
-      // Reset connection attempt counter
-      connectionAttemptRef.current = 0;
-    }
-  }, [userId]);
+    // Cleanup function
+    return () => {
+      console.log('Cleaning up WebSocket connection');
+      if (socketRef.current) {
+        // Remove all event listeners
+        eventHandlers.forEach(({ event, handler }) => {
+          socket.off(event, handler);
+        });
+        
+        // Clear any pending reconnection attempts
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        
+        // Disconnect the socket if connected
+        if (socket.connected) {
+          socket.disconnect();
+        }
+        
+        // Reset refs
+        socketRef.current = null;
+        socketInitialized.current = false;
+      }
+    };
+  }, [userId]); // Only depend on userId as all handlers are stable
 
-  const fetchMessages = useCallback(async (otherUserId) => {
-    const currentUserId = userIdRef.current;
-    console.log("Context: fetchMessages called with Sender:", currentUserId, "and Receiver:", otherUserId);
+  // Handle user logout
+  useEffect(() => {
+    if (!userId && socketRef.current) {
+      console.log('User logged out, cleaning up WebSocket');
+      
+      // Disconnect the socket
+      if (socketRef.current.connected) {
+        socketRef.current.disconnect();
+      }
+      
+      // Clear any pending reconnection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      // Clear the ref and update state
+      socketRef.current = null;
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      
+      // Reset connection attempt counter
+      connectionAttemptRef.current = 0;
+    }
+  }, [userId]);
 
-    if (!currentUserId || !otherUserId) {
-      console.error('Missing user ID or otherUserId for fetchMessages', { currentUserId, otherUserId });
-      return [];
-    }
+  const fetchMessages = useCallback(async (otherUserId) => {
+    const currentUserId = userIdRef.current;
+    console.log("Context: fetchMessages called with Sender:", currentUserId, "and Receiver:", otherUserId);
 
-    const chatKey = String(otherUserId);
-    if (isLoading && messages[chatKey]?.length > 0) {
-      console.log('Skipping fetch - already loading messages for chat:', chatKey);
-      return messages[chatKey];
-    }
+    if (!currentUserId || !otherUserId) {
+      console.error('Missing user ID or otherUserId for fetchMessages', { currentUserId, otherUserId });
+      return [];
+    }
 
-    setIsLoading(true);
-    console.log(`Fetching messages between ${currentUserId} and ${otherUserId}`);
+    const chatKey = String(otherUserId);
+    if (isLoading && messages[chatKey]?.length > 0) {
+      console.log('Skipping fetch - already loading messages for chat:', chatKey);
+      return messages[chatKey];
+    }
 
-    try {
-      const response = await api.get(`/api/messages/get/${currentUserId}/${otherUserId}`);
-      console.log(`Fetched ${response.data?.length || 0} messages for chat ${otherUserId}`);
+    setIsLoading(true);
+    console.log(`Fetching messages between ${currentUserId} and ${otherUserId}`);
 
-      const newMessages = response.data || [];
-      setMessages(prev => ({
-        ...prev,
-        [chatKey]: newMessages
-      }));
+    try {
+      const response = await api.get(`/messages/get/${currentUserId}/${otherUserId}`);
+      console.log(`Fetched ${response.data?.length || 0} messages for chat ${otherUserId}`);
 
-      return newMessages;
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      setError('Failed to load messages');
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading, messages]);
+      const newMessages = response.data || [];
+      setMessages(prev => ({
+        ...prev,
+        [chatKey]: newMessages
+      }));
 
-  const sendMessage = useCallback(async ({ receiverId, message, image = null }) => {
-    const chatId = receiverId;
-    const currentUserId = userIdRef.current;
+      return newMessages;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      setError('Failed to load messages');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, messages]);
 
-    if (!currentUserId || !receiverId) {
-      throw new Error('Missing sender or receiver ID');
-    }
+  const sendMessage = useCallback(async ({ receiverId, message, image = null }) => {
+    const chatId = receiverId;
+    const currentUserId = userIdRef.current;
 
-    console.log(`Sending message - Sender: ${currentUserId}, Receiver: ${receiverId}`);
+    if (!currentUserId || !receiverId) {
+      throw new Error('Missing sender or receiver ID');
+    }
 
-    let imagePreviewUrl = null;
-    try {
-      if (image && (image instanceof File || image instanceof Blob)) {
-        imagePreviewUrl = URL.createObjectURL(image);
-      } else if (image && typeof image === 'string') {
-        imagePreviewUrl = image;
-      }
-    } catch (error) {
-      console.error('Error creating image preview URL:', error);
-    }
+    console.log(`Sending message - Sender: ${currentUserId}, Receiver: ${receiverId}`);
 
-    const tempMessage = {
-      _id: `temp-${Date.now()}`,
-      senderId: currentUserId,
-      receiverId: receiverId,
-      message: message,
-      text: message,
-      image: imagePreviewUrl,
-      createdAt: new Date().toISOString(),
-      isSending: true,
-      sender: user
-    };
+    let imagePreviewUrl = null;
+    try {
+      if (image && (image instanceof File || image instanceof Blob)) {
+        imagePreviewUrl = URL.createObjectURL(image);
+      } else if (image && typeof image === 'string') {
+        imagePreviewUrl = image;
+      }
+    } catch (error) {
+      console.error('Error creating image preview URL:', error);
+    }
 
-    setMessages(prev => ({
-      ...prev,
-      [chatId]: [...(prev[chatId] || []), tempMessage]
-    }));
+    const tempMessage = {
+      _id: `temp-${Date.now()}`,
+      senderId: currentUserId,
+      receiverId: receiverId,
+      message: message,
+      text: message,
+      image: imagePreviewUrl,
+      createdAt: new Date().toISOString(),
+      isSending: true,
+      sender: user
+    };
 
-    try {
-      const formData = new FormData();
-      if (message) formData.append('message', message);
-      formData.append('receiverId', receiverId);
-      
-      if (image && (image instanceof File || image instanceof Blob)) {
-        console.log('Attaching image to form data');
-        formData.append('image', image);
-      } else if (image && typeof image === 'string') {
-        console.warn('Cannot upload image: Expected File/Blob but got string URL');
-      }
-      
-      console.log('Sending message to:', `/api/messages/send/${currentUserId}`);
-      
-      const response = await api.post(
-        `/api/messages/send/${currentUserId}`, 
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
+    setMessages(prev => ({
+      ...prev,
+      [chatId]: [...(prev[chatId] || []), tempMessage]
+    }));
 
-      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
-        try {
-          URL.revokeObjectURL(imagePreviewUrl);
-        } catch (error) {
-          console.error('Error revoking object URL:', error);
-        }
-      }
+    try {
+      const formData = new FormData();
+      if (message) formData.append('message', message);
+      formData.append('receiverId', receiverId);
+      
+      if (image && (image instanceof File || image instanceof Blob)) {
+        console.log('Attaching image to form data');
+        formData.append('image', image);
+      } else if (image && typeof image === 'string') {
+        console.warn('Cannot upload image: Expected File/Blob but got string URL');
+      }
+      
+      console.log('Sending message to:', `/messages/send/${currentUserId}`);
+      
+      const response = await api.post(
+        `/messages/send/${currentUserId}`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
 
-      setMessages(prev => ({
-        ...prev,
-        [chatId]: (prev[chatId] || []).map(msg => 
-          msg._id === tempMessage._id 
-            ? { 
-                ...response.data, 
-                sender: user, 
-                isSending: false,
-                image: response.data.image || response.data.imageUrl || null
-              } 
-            : msg
-        )
-      }));
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(imagePreviewUrl);
+        } catch (error) {
+          console.error('Error revoking object URL:', error);
+        }
+      }
 
-      if (socketRef.current) {
-        const messageToEmit = {
-          ...response.data,
-          sender: user,
-          image: response.data.image || response.data.imageUrl || null
-        };
-        socketRef.current.emit('sendMessage', messageToEmit);
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error in sendMessage:', error);
-      setMessages(prev => ({
-        ...prev,
-        [chatId]: (prev[chatId] || []).map(msg => 
-          msg._id === tempMessage._id 
-            ? { ...msg, error: true, isSending: false } 
-            : msg
-        )
-      }));
-      throw error;
-    }
-  }, [user]);
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: (prev[chatId] || []).map(msg => 
+          msg._id === tempMessage._id 
+            ? { 
+              ...response.data, 
+              sender: user, 
+              isSending: false,
+              image: response.data.image || response.data.imageUrl || null
+            } 
+            : msg
+        )
+      }));
 
-  const startTyping = useCallback((chatId) => {
-    if (socketRef.current?.connected && userIdRef.current) {
-      socketRef.current.emit('typing', { 
-        chatId, 
-        userId: userIdRef.current 
-      });
-    }
-  }, []);
+      if (socketRef.current) {
+        const messageToEmit = {
+          ...response.data,
+          sender: user,
+          image: response.data.image || response.data.imageUrl || null
+        };
+        socketRef.current.emit('sendMessage', messageToEmit);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: (prev[chatId] || []).map(msg => 
+          msg._id === tempMessage._id 
+            ? { ...msg, error: true, isSending: false } 
+            : msg
+        )
+      }));
+      throw error;
+    }
+  }, [user]);
 
-  const stopTyping = useCallback((chatId) => {
-    if (socketRef.current?.connected && userIdRef.current) {
-      socketRef.current.emit('stopTyping', { 
-        chatId, 
-        userId: userIdRef.current 
-      });
-    }
-  }, []);
+  const startTyping = useCallback((chatId) => {
+    if (socketRef.current?.connected && userIdRef.current) {
+      socketRef.current.emit('typing', { 
+        chatId, 
+        userId: userIdRef.current 
+      });
+    }
+  }, []);
 
-  const deleteMessage = useCallback(async (messageId, chatId) => {
-    try {
-      if (messageId.startsWith('temp-')) {
-        setMessages(prev => ({
-          ...prev,
-          [chatId]: (prev[chatId] || []).filter(msg => msg._id !== messageId)
-        }));
-        return true;
-      }
+  const stopTyping = useCallback((chatId) => {
+    if (socketRef.current?.connected && userIdRef.current) {
+      socketRef.current.emit('stopTyping', { 
+        chatId, 
+        userId: userIdRef.current 
+      });
+    }
+  }, []);
 
-      await api.delete(`/api/messages/delete/${messageId}`);
+  const deleteMessage = useCallback(async (messageId, chatId) => {
+    try {
+      if (messageId.startsWith('temp-')) {
+        setMessages(prev => ({
+          ...prev,
+          [chatId]: (prev[chatId] || []).filter(msg => msg._id !== messageId)
+        }));
+        return true;
+      }
 
-      setMessages(prev => ({
-        ...prev,
-        [chatId]: (prev[chatId] || []).filter(msg => msg._id !== messageId)
-      }));
+      await api.delete(`/messages/delete/${messageId}`);
 
-      return true;
-    } catch (error) {
-      console.error('Error deleting message:', error);
-      toast.error(error.response?.data?.error || 'Failed to delete message');
-      return false;
-    }
-  }, []);
+      setMessages(prev => ({
+        ...prev,
+        [chatId]: (prev[chatId] || []).filter(msg => msg._id !== messageId)
+      }));
 
-  const contextValue = useMemo(() => ({
-    // State
-    isConnected,
-    messages,
-    typingUsers,
-    onlineUsers,
-    selectedChat,
-    sidebarUsers,
-    isLoading,
-    error,
-    connectionStatus,
-    
-    // Actions
-    sendMessage,
-    fetchMessages,
-    startTyping,
-    stopTyping,
-    deleteMessage,
-    setSelectedChat,
-    setSidebarUsers,
-    setMessages,
+      return true;
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    // State
+    isConnected,
+    messages,
+    typingUsers,
+    onlineUsers,
+    selectedChat,
+    sidebarUsers,
+    isLoading,
+    error,
+    connectionStatus,
+    
+    // Actions
+    sendMessage,
+    fetchMessages,
+    startTyping,
+    stopTyping,
+    deleteMessage,
+    setSelectedChat,
+    setSidebarUsers,
+    setMessages,
     fetchSidebarUsers
-  }), [
-    isConnected,
-    messages,
-    typingUsers,
-    onlineUsers,
-    selectedChat,
-    sidebarUsers,
-    isLoading,
-    error,
-    connectionStatus,
-    sendMessage,
-    fetchMessages,
-    startTyping,
-    stopTyping,
-    deleteMessage,
+  }), [
+    isConnected,
+    messages,
+    typingUsers,
+    onlineUsers,
+    selectedChat,
+    sidebarUsers,
+    isLoading,
+    error,
+    connectionStatus,
+    sendMessage,
+    fetchMessages,
+    startTyping,
+    stopTyping,
+    deleteMessage,
+    setSelectedChat,
+    setSidebarUsers,
+    setMessages,
     fetchSidebarUsers
-  ]);
+  ]);
 
-  return (
-    <ChatContext.Provider value={contextValue}>
-      {children}
-    </ChatContext.Provider>
-  );
+  return (
+    <ChatContext.Provider value={contextValue}>
+      {children}
+    </ChatContext.Provider>
+  );
 };
 
 export { ChatContext };

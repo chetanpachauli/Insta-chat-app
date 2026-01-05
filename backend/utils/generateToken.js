@@ -8,7 +8,9 @@ function setAccessTokenCookie(res, userId) {
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined,
     maxAge: (() => {
       const val = process.env.ACCESS_TOKEN_EXPIRES_IN || '15m';
       // default to 15 minutes if parsing fails
