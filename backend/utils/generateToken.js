@@ -1,26 +1,41 @@
 const jwt = require('jsonwebtoken');
 
-function setAccessTokenCookie(res, userId) {
-  const token = jwt.sign({ id: userId }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m'
-  });
+// Generate access token
+const generateAccessToken = (userId) => {
+  return jwt.sign(
+    { id: userId },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m' }
+  );
+};
 
+// Generate refresh token
+const generateRefreshToken = (userId) => {
+  return jwt.sign(
+    { id: userId },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' }
+  );
+};
+
+// Set access token as HTTP-only cookie
+const setAccessTokenCookie = (res, userId) => {
+  const token = generateAccessToken(userId);
+  
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: true, // Always true for production
+    sameSite: 'none', // Required for cross-site cookies
     path: '/',
-    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined,
     maxAge: (() => {
       const val = process.env.ACCESS_TOKEN_EXPIRES_IN || '15m';
-      // default to 15 minutes if parsing fails
       try {
         if (val.endsWith('ms')) return parseInt(val);
         if (val.endsWith('s')) return parseInt(val) * 1000;
         if (val.endsWith('m')) return parseInt(val) * 60 * 1000;
         if (val.endsWith('h')) return parseInt(val) * 60 * 60 * 1000;
         if (val.endsWith('d')) return parseInt(val) * 24 * 60 * 60 * 1000;
-        return 15 * 60 * 1000;
+        return 15 * 60 * 1000; // Default 15 minutes
       } catch (e) {
         return 15 * 60 * 1000;
       }
@@ -29,6 +44,10 @@ function setAccessTokenCookie(res, userId) {
 
   res.cookie('accessToken', token, cookieOptions);
   return token;
-}
+};
 
-module.exports = { setAccessTokenCookie };
+module.exports = { 
+  generateAccessToken,
+  generateRefreshToken,
+  setAccessTokenCookie 
+};

@@ -17,4 +17,7 @@ router.get('/check', authCtrl.checkAuth);
 // GET /api/auth/search?query=...
 router.get('/search', authCtrl.search);
 
+// POST /api/auth/refresh-token
+router.post('/refresh-token', authCtrl.refreshToken);
+
 module.exports = router;

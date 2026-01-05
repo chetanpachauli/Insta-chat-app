@@ -1,10 +1,10 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { setAccessTokenCookie } = require('../utils/generateToken');
-
-const generateRefreshToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' });
+const { 
+  generateAccessToken, 
+  generateRefreshToken, 
+  setAccessTokenCookie 
+} = require('../utils/generateToken');
 
 exports.signup = async (req, res) => {
   try {
@@ -113,8 +113,11 @@ exports.logout = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(400).json({ message: 'No refresh token provided' });
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'No refresh token provided' });
+    }
 
+    // Verify the refresh token
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -122,21 +125,37 @@ exports.refreshToken = async (req, res) => {
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
 
+    // Find the user and check if the refresh token exists
     const user = await User.findById(decoded.id);
-    if (!user) return res.status(401).json({ message: 'Invalid refresh token' });
+    if (!user || !user.refreshTokens.includes(refreshToken)) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
 
-    const found = user.refreshTokens.includes(refreshToken);
-    if (!found) return res.status(401).json({ message: 'Refresh token not recognized' });
-
-    // rotate token
-    user.refreshTokens = user.refreshTokens.filter((t) => t !== refreshToken);
+    // Generate new tokens
     const newRefreshToken = generateRefreshToken(user._id);
+    const newAccessToken = generateAccessToken(user._id);
+
+    // Update the refresh token in the database (token rotation)
+    user.refreshTokens = user.refreshTokens.filter(token => token !== refreshToken);
     user.refreshTokens.push(newRefreshToken);
     await user.save();
 
-    const newAccessToken = generateAccessToken(user._id);
-    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    // Set the new access token as an HTTP-only cookie
+    setAccessTokenCookie(res, user._id);
+
+    // Return the new refresh token in the response body
+    res.json({ 
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email,
+        profilePic: user.profilePic,
+        bio: user.bio
+      },
+      refreshToken: newRefreshToken 
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message || 'Server error' });
+    console.error('Refresh token error:', err);
+    res.status(500).json({ message: 'Server error during token refresh' });
   }
 };
