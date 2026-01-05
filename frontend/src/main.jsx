@@ -8,7 +8,7 @@ import AuthProvider from './context/AuthContext';
 import ChatProvider from './context/ChatContext';
 
 createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  
     <BrowserRouter>
       <AuthProvider>
         <ChatProvider>
@@ -16,5 +16,5 @@ createRoot(document.getElementById('root')).render(
         </ChatProvider>
       </AuthProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  
 );
