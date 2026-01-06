@@ -5,6 +5,7 @@ const {
   generateRefreshToken, 
   setAccessTokenCookie 
 } = require('../utils/generateToken');
+const jwt = require('jsonwebtoken');
 
 exports.signup = async (req, res) => {
   try {
@@ -107,6 +108,27 @@ exports.logout = async (req, res) => {
     res.json({ message: 'Logged out' });
   } catch (err) {
     res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+// Delete user account
+exports.deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    
+    // Delete the user from the database
+    await User.findByIdAndDelete(userId);
+    
+    // Clear the access token cookie
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      sameSite: 'none',
+      secure: true
+    });
+    
+    res.status(200).json({ message: 'Account deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Error deleting account' });
   }
 };
 

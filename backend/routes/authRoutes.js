@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authCtrl = require('../controllers/authController');
+const protect = require('../middleware/protectRoute');
 
 // POST /api/auth/signup
 router.post('/signup', authCtrl.signup);
@@ -19,5 +20,8 @@ router.get('/search', authCtrl.search);
 
 // POST /api/auth/refresh-token
 router.post('/refresh-token', authCtrl.refreshToken);
+
+// DELETE /api/auth/delete-account
+router.delete('/delete-account', protect, authCtrl.deleteAccount);
 
 module.exports = router;

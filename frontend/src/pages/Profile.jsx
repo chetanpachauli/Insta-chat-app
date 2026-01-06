@@ -23,6 +23,7 @@ import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid, PlusIco
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useRef } from 'react';
 import { uploadImageToCloudinary } from '../utils/cloudinary';
+import api from '../utils/axiosConfig';
 
 // Follow Button Component with improved UX
 const FollowButton = ({ profile, onUpdate, setProfile }) => {
@@ -519,6 +520,21 @@ const Profile = () => {
     });
   };
 
+  // Handle delete account
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      try {
+        await api.delete('/auth/delete-account');
+        toast.success('Account deleted successfully');
+        logout();
+        navigate('/login');
+      } catch (error) {
+        console.error('Error deleting account:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete account');
+      }
+    }
+  };
+
   // Handle settings
   const handleSettings = () => {
     navigate('/accounts/settings/');
@@ -626,10 +642,19 @@ const Profile = () => {
                 </button>
                 <button
                   onClick={logout}
-                  className="p-2 text-red-500 hover:bg-gray-800 rounded-full"
+                  className="p-2 text-blue-500 hover:bg-gray-800 rounded-full"
                   aria-label="Logout"
+                  title="Logout"
                 >
                   <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  className="p-2 text-red-500 hover:bg-gray-800 rounded-full"
+                  aria-label="Delete account"
+                  title="Delete Account"
+                >
+                  <TrashIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
