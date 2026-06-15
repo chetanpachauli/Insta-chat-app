@@ -140,4 +140,19 @@ exports.unfollowUser = async (req, res) => {
   }
 }
 
-// Export remaining methods as needed
+exports.getSuggestions = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const me = await User.findById(userId)
+    const followingIds = (me.following || []).map(id => String(id))
+
+    const suggestions = await User.find({
+      _id: { $ne: userId, $nin: followingIds }
+    })
+      .select('-password -refreshTokens')
+      .limit(10)
+      .sort('-createdAt')
+
+    res.json(suggestions)
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
+}

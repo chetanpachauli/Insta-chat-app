@@ -1,8 +1,8 @@
 import React, { useState, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import {AuthContext} from '../context/AuthContext'
+import { AuthContext } from '../context/AuthContext'
 
-export default function Signup(){
+export default function Signup() {
   const { signup } = useContext(AuthContext)
   const navigate = useNavigate()
   const [form, setForm] = useState({ username: '', email: '', password: '', bio: '' })
@@ -10,9 +10,9 @@ export default function Signup(){
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const onChange = (e) => setForm(f=>({ ...f, [e.target.name]: e.target.value }))
+  const onChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
-  async function uploadToCloudinary(file){
+  async function uploadToCloudinary(file) {
     const url = import.meta.env.VITE_CLOUDINARY_URL
     if (!url) throw new Error('Missing Cloudinary URL')
     const fd = new FormData()
@@ -28,51 +28,75 @@ export default function Signup(){
     e.preventDefault()
     setError(null)
     setLoading(true)
-    try{
+    try {
       let profilePic = ''
       if (file) profilePic = await uploadToCloudinary(file)
       await signup({ ...form, profilePic })
       navigate('/')
-    }catch(err){
+    } catch (err) {
       setError(err.message || 'Signup failed')
-    }finally{ setLoading(false) }
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="min-h-screen flex bg-zinc-950">
-      {/* Left visual - hidden on small screens */}
-      <div className="hidden md:flex w-1/2 items-center justify-center p-10">
-        <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-purple-700 via-pink-600 to-orange-400"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-purple-500"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-pink-700 via-red-600 to-yellow-400"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-cyan-700 via-sky-600 to-indigo-500"></div>
+    <div className="min-h-screen flex bg-dark-900">
+      {/* Left visual */}
+      <div className="hidden md:flex w-1/2 items-center justify-center p-10 bg-dot-pattern">
+        <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
+          {[
+            'from-brand-500 via-accent-pink to-accent-orange',
+            'from-blue-600 via-indigo-600 to-brand-500',
+            'from-accent-pink via-red-500 to-accent-orange',
+            'from-cyan-600 via-sky-500 to-indigo-600',
+          ].map((gradient, i) => (
+            <div
+              key={i}
+              className={`aspect-square rounded-2xl bg-gradient-to-br ${gradient} opacity-80 hover:opacity-100 transition-opacity duration-300 animate-scale-in`}
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg p-8 shadow-sm">
-          <h2 className="text-3xl font-semibold text-white mb-4 text-center">Create an account</h2>
-          {error && <div className="text-sm text-red-500 mb-3">{error}</div>}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input name="username" value={form.username} onChange={onChange} placeholder="Username" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" />
-            <input name="email" value={form.email} onChange={onChange} placeholder="Email" type="email" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" />
-            <input name="password" value={form.password} onChange={onChange} placeholder="Password" type="password" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" />
-            <textarea name="bio" value={form.bio} onChange={onChange} placeholder="Bio (optional)" className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" />
+        <div className="w-full max-w-sm animate-slide-up">
+          <div className="card p-8">
+            <h2 className="text-2xl font-bold text-center mb-2 bg-gradient-brand bg-clip-text text-transparent">
+              Create account
+            </h2>
+            <p className="text-dark-400 text-sm text-center mb-6">Join the community</p>
 
-            <label className="flex items-center gap-3 text-sm text-gray-200">
-              <span>Profile picture</span>
-              <input type="file" accept="image/*" onChange={(e)=>setFile(e.target.files?.[0]||null)} className="text-sm text-gray-400" />
-            </label>
+            {error && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 mb-4">
+                {error}
+              </div>
+            )}
 
-            <button type="submit" disabled={loading} className="w-full px-4 py-2 rounded text-white font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-md flex items-center justify-center gap-2">
-              {loading ? (
-                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-              ) : 'Sign up'}
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input name="username" value={form.username} onChange={onChange} placeholder="Username" className="input-field" />
+              <input name="email" value={form.email} onChange={onChange} placeholder="Email" type="email" className="input-field" />
+              <input name="password" value={form.password} onChange={onChange} placeholder="Password" type="password" className="input-field" />
+              <textarea name="bio" value={form.bio} onChange={onChange} placeholder="Bio (optional)" className="input-field" rows={2} />
 
-          <div className="text-sm text-center text-zinc-400 mt-6">Have an account? <Link to="/login" className="text-white font-semibold">Log in</Link></div>
+              <label className="flex items-center gap-3 text-sm text-dark-300">
+                <span>Profile picture</span>
+                <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-sm text-dark-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-dark-700 file:text-white hover:file:bg-dark-600" />
+              </label>
+
+              <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 mt-2">
+                {loading ? (
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : 'Sign up'}
+              </button>
+            </form>
+
+            <div className="text-sm text-center text-dark-400 mt-6">
+              Have an account?{' '}
+              <Link to="/login" className="text-brand-400 font-semibold hover:underline">
+                Log in
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

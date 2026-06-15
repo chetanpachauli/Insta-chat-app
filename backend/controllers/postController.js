@@ -81,11 +81,17 @@ exports.addComment = async (req, res) => {
 exports.getFeed = async (req, res) => {
   try {
     const userId = req.user.id
-    // feed: posts from following + own posts
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 10
+    const skip = (page - 1) * limit
+
     const me = await User.findById(userId)
     const ids = (me.following || []).concat([userId])
-    const posts = await Post.find({ author: { $in: ids } }).sort({ createdAt: -1 }).populate('author', 'username profilePic')
-    res.json(posts)
+    const [posts, total] = await Promise.all([
+      Post.find({ author: { $in: ids } }).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('author', 'username profilePic'),
+      Post.countDocuments({ author: { $in: ids } })
+    ])
+    res.json({ posts, total, page, totalPages: Math.ceil(total / limit) })
   } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
 }
 
@@ -131,15 +137,17 @@ exports.getExplore = async (req, res) => {
       return res.json(posts);
     }
 
-    // For non-reel explore, use the regular query
-    const posts = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .populate('author', 'username profilePic')
-      .lean();
+    // For non-reel explore, use the regular query with pagination
+    const page = parseInt(req.query.page) || 1
+    const limit = parseInt(req.query.limit) || 20
+    const skip = (page - 1) * limit
+    const [posts, total] = await Promise.all([
+      Post.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('author', 'username profilePic').lean(),
+      Post.countDocuments(query)
+    ])
 
     console.log(`Found ${posts.length} posts`);
-    res.json(posts);
+    res.json({ posts, total, page, totalPages: Math.ceil(total / limit) });
   } catch (err) { 
     console.error('Error in getExplore:', {
       message: err.message,
@@ -185,6 +193,20 @@ exports.getSaved = async (req, res) => {
     const userId = req.user.id
     const user = await User.findById(userId).populate('savedPosts')
     res.json(user.savedPosts || [])
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
+}
+
+exports.updatePost = async (req, res) => {
+  try {
+    const userId = req.user.id
+    const { postId } = req.params
+    const { caption } = req.body
+    const post = await Post.findById(postId)
+    if (!post) return res.status(404).json({ message: 'Post not found' })
+    if (String(post.author) !== String(userId)) return res.status(403).json({ message: 'Not authorized' })
+    if (typeof caption === 'string') post.caption = caption
+    await post.save()
+    res.json(post)
   } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
 }
 

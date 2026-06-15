@@ -12,7 +12,15 @@ const PostSchema = new mongoose.Schema({
   mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
   caption: { type: String, default: '' },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  comments: [CommentSchema]
+  comments: [CommentSchema],
+  tags: [{ type: String }]
 }, { timestamps: true });
+
+PostSchema.statics.extractHashtags = function (caption) {
+  if (!caption) return [];
+  const matches = caption.match(/#[a-zA-Z0-9_]+/g);
+  if (!matches) return [];
+  return matches.map(tag => tag.toLowerCase().slice(1));
+};
 
 module.exports = mongoose.model('Post', PostSchema);

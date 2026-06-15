@@ -163,6 +163,32 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Group chat events
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(conversationId);
+    console.log(`Socket ${socket.id} joined conversation ${conversationId}`);
+  });
+
+  socket.on('leaveConversation', (conversationId) => {
+    socket.leave(conversationId);
+    console.log(`Socket ${socket.id} left conversation ${conversationId}`);
+  });
+
+  socket.on('sendGroupMessage', (data) => {
+    const { conversationId, senderId, message, image, createdAt } = data;
+    io.to(conversationId).emit('newGroupMessage', {
+      senderId, message, image, conversationId, createdAt: createdAt || new Date()
+    });
+  });
+
+  socket.on('groupTyping', ({ conversationId, from }) => {
+    socket.to(conversationId).emit('groupTyping', { from, conversationId });
+  });
+
+  socket.on('groupStopTyping', ({ conversationId, from }) => {
+    socket.to(conversationId).emit('groupStopTyping', { from, conversationId });
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -205,6 +231,10 @@ try { app.use('/api/messages', require('./routes/messageRoutes')); } catch (e) {
 try { app.use('/api/profile', require('./routes/profileRoutes')); } catch (e) { console.warn('Profile routes not mounted:', e.message); }
 try { app.use('/api/posts', require('./routes/postRoutes')); } catch (e) { console.warn('Post routes not mounted:', e.message); }
 try { app.use('/api/notifications', require('./routes/notificationRoutes')); } catch (e) { console.warn('Notification routes not mounted:', e.message); }
+try { app.use('/api/stories', require('./routes/storyRoutes')); } catch (e) { console.warn('Story routes not mounted:', e.message); }
+try { app.use('/api/hashtags', require('./routes/hashtagRoutes')); } catch (e) { console.warn('Hashtag routes not mounted:', e.message); }
+try { app.use('/api/conversations', require('./routes/conversationRoutes')); } catch (e) { console.warn('Conversation routes not mounted:', e.message); }
+try { app.use('/api/push', require('./routes/pushRoutes')); } catch (e) { console.warn('Push routes not mounted:', e.message); }
 
 // Healthcheck
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));

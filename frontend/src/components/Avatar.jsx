@@ -33,7 +33,7 @@ function Avatar({ user = {}, size = 'md', className = '' }) {
     return (
       <div 
         style={style} 
-        className={`rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-semibold ${sizeInfo.text} ${className}`}
+        className={`rounded-full bg-gradient-brand flex items-center justify-center text-white font-semibold ${sizeInfo.text} ${className}`}
       >
         {label}
       </div>

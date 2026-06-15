@@ -186,3 +186,30 @@ exports.deleteMessage = async (req, res) => {
     res.status(500).json({ error: 'Error deleting message' });
   }
 };
+
+exports.toggleReaction = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+    const userId = req.user.id;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const existingIdx = message.reactions.findIndex(
+      r => String(r.userId) === String(userId) && r.emoji === emoji
+    );
+
+    if (existingIdx > -1) {
+      message.reactions.splice(existingIdx, 1);
+    } else {
+      message.reactions = message.reactions.filter(r => String(r.userId) !== String(userId));
+      message.reactions.push({ emoji, userId });
+    }
+
+    await message.save();
+    res.json(message.reactions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

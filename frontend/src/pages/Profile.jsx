@@ -88,11 +88,8 @@ const FollowButton = ({ profile, onUpdate, setProfile }) => {
 
   if (loading) {
     return (
-      <button 
-        className="px-4 py-2 bg-gray-800 text-white rounded-md w-full flex items-center justify-center" 
-        disabled
-      >
-        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+      <button className="btn-ghost w-full flex items-center justify-center gap-2" disabled>
+        <div className="w-4 h-4 border-2 border-dark-300 border-t-transparent rounded-full animate-spin" />
         {isFollowing ? 'Unfollowing...' : 'Following...'}
       </button>
     );
@@ -101,20 +98,20 @@ const FollowButton = ({ profile, onUpdate, setProfile }) => {
   return (
     <button
       onClick={toggleFollow}
-      className={`px-4 py-2 rounded-md w-full flex items-center justify-center space-x-2 transition-all duration-200 ${
-        isFollowing 
-          ? 'bg-gray-800 text-white hover:bg-gray-700' 
-          : 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white hover:opacity-90'
+      className={`px-4 py-2 rounded-xl w-full flex items-center justify-center gap-2 transition-all duration-200 font-medium text-sm ${
+        isFollowing
+          ? 'bg-dark-800 text-white hover:bg-dark-700 border border-dark-700'
+          : 'bg-gradient-brand-h text-white hover:opacity-90'
       }`}
     >
       {isFollowing ? (
         <>
-          <UserMinusIcon className="w-5 h-5" />
+          <UserMinusIcon className="w-4 h-4" />
           <span>Following</span>
         </>
       ) : (
         <>
-          <UserPlusIcon className="w-5 h-5" />
+          <UserPlusIcon className="w-4 h-4" />
           <span>Follow</span>
         </>
       )}
@@ -300,13 +297,13 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-zinc-900 p-6 text-left align-middle shadow-xl transition-all border border-zinc-800">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-white mb-6"
-                >
-                  Edit Profile
-                </Dialog.Title>
+      <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-dark-800 p-6 text-left align-middle shadow-xl transition-all border border-dark-700">
+        <Dialog.Title
+          as="h3"
+          className="text-lg font-semibold text-white mb-6"
+        >
+          Edit Profile
+        </Dialog.Title>
 
                 <form onSubmit={handleSubmit}>
                   <div className="mb-6">
@@ -316,12 +313,12 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
                         alt="Profile"
                         className="w-full h-full rounded-full object-cover"
                       />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full hover:bg-blue-700 transition-colors"
-                      >
-                        <PlusIcon className="w-5 h-5 text-white" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-brand-600 p-2 rounded-full hover:bg-brand-700 transition-colors"
+              >
+                <PlusIcon className="w-5 h-5 text-white" />
                         <input
                           type="file"
                           ref={fileInputRef}
@@ -334,7 +331,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
 
                     <div className="space-y-4">
                       <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
+                        <label htmlFor="username" className="block text-sm font-medium text-dark-300 mb-1">
                           Username
                         </label>
                         <input
@@ -342,13 +339,13 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
                           id="username"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="input-field"
                           placeholder="Enter your username"
                         />
                       </div>
 
                       <div>
-                        <label htmlFor="bio" className="block text-sm font-medium text-gray-300 mb-1">
+                        <label htmlFor="bio" className="block text-sm font-medium text-dark-300 mb-1">
                           Bio
                         </label>
                         <textarea
@@ -356,27 +353,21 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
                           value={bio}
                           onChange={(e) => setBio(e.target.value)}
                           rows="3"
-                          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="input-field"
                           placeholder="Tell us about yourself..."
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white"
-                    >
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button type="button" onClick={onClose} className="btn-ghost text-sm">
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isUploading}
-                      className={`px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                        isUploading ? 'opacity-70 cursor-not-allowed' : ''
-                      }`}
+                      className={`btn-primary text-sm ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                       {isUploading ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -613,64 +604,40 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
+    <div className="min-h-screen bg-dark-900 text-white max-w-4xl mx-auto px-4 pb-20 md:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-gray-800 p-3 mt-4 mx-4 rounded-2xl">
+      <header className="sticky top-0 z-10 bg-dark-900/80 backdrop-blur-md border-b border-dark-700/50 p-3">
         <div className="flex items-center max-w-4xl mx-auto">
-          <button 
-            onClick={handleBack}
-            className="p-2 hover:bg-gray-800 rounded-full mr-4 transition-colors"
-            aria-label="Go back"
-          >
+          <button onClick={handleBack} className="btn-icon mr-3">
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-semibold">{profile?.username || 'Profile'}</h1>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-dark-400">
               {profile?.posts?.length || 0} posts • {profile?.followers?.length || 0} followers • {profile?.following?.length || 0} following
             </p>
           </div>
           {isOwnProfile ? (
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleSettings}
-                  className="p-2 hover:bg-gray-800 rounded-full"
-                  aria-label="Settings"
-                >
-                  <EllipsisHorizontalIcon className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={logout}
-                  className="p-2 text-blue-500 hover:bg-gray-800 rounded-full"
-                  aria-label="Logout"
-                  title="Logout"
-                >
-                  <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  className="p-2 text-red-500 hover:bg-gray-800 rounded-full"
-                  aria-label="Delete account"
-                  title="Delete Account"
-                >
-                  <TrashIcon className="w-5 h-5" />
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
+              <button onClick={handleSettings} className="btn-icon" aria-label="Settings">
+                <EllipsisHorizontalIcon className="w-5 h-5" />
+              </button>
+              <button onClick={logout} className="btn-icon text-accent-blue" aria-label="Logout" title="Logout">
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              </button>
+              <button onClick={handleDeleteAccount} className="btn-icon text-red-400" aria-label="Delete account" title="Delete Account">
+                <TrashIcon className="w-5 h-5" />
+              </button>
             </div>
           ) : (
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={handleShareProfile}
-                className="p-2 hover:bg-gray-800 rounded-full"
-                aria-label="Share profile"
-              >
+            <div className="flex items-center gap-2">
+              <button onClick={handleShareProfile} className="btn-icon" aria-label="Share profile">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
               </button>
-              <FollowButton 
-                profile={profile} 
+              <FollowButton
+                profile={profile}
                 onUpdate={(updatedProfile) => setProfile(prev => ({
                   ...prev,
                   ...updatedProfile,
@@ -685,25 +652,22 @@ const Profile = () => {
       </header>
 
       {/* Profile Info */}
-      <div className="p-4 mt-4 bg-gray-900/50 rounded-3xl">
-        <div className="flex items-start space-x-8 mb-6">
+      <div className="p-4 mt-4 card">
+        <div className="flex items-start gap-6 mb-6">
           {/* Profile Picture */}
-          <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 p-0.5">
-              <div className="bg-black rounded-full p-0.5 w-full h-full">
+          <div className="relative shrink-0">
+            <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-brand p-[2px]">
+              <div className="bg-dark-900 rounded-full w-full h-full">
                 {profile?.profilePic ? (
-                  <img 
-                    src={profile.profilePic} 
+                  <img
+                    src={profile.profilePic}
                     alt={profile.username}
                     className="w-full h-full rounded-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
-                    }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'; }}
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-gray-800 flex items-center justify-center">
-                    <UserCircleIcon className="w-12 h-12 md:w-16 md:h-16 text-gray-400" />
+                  <div className="w-full h-full rounded-full bg-dark-800 flex items-center justify-center">
+                    <UserCircleIcon className="w-12 h-12 md:w-16 md:h-16 text-dark-400" />
                   </div>
                 )}
               </div>
@@ -714,33 +678,26 @@ const Profile = () => {
           <div className="flex-1">
             <div className="mb-4">
               <h1 className="text-xl font-bold">{profile?.name || profile?.username}</h1>
-              <p className="text-sm text-gray-300">Digital Creator</p>
-              {profile?.bio && (
-                <p className="text-sm mt-2 text-gray-300">{profile.bio}</p>
-              )}
+              <p className="text-sm text-dark-300">Digital Creator</p>
+              {profile?.bio && <p className="text-sm mt-2 text-dark-300">{profile.bio}</p>}
               {profile?.website && (
-                <a 
+                <a
                   href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-400 text-sm hover:underline block mt-1"
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-accent-blue text-sm hover:underline block mt-1"
                 >
                   {profile.website}
                 </a>
               )}
             </div>
 
-            {/* Follow/Edit Button */}
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               {isOwnProfile ? (
-                <button 
-                  onClick={() => setEditing(true)}
-                  className="bg-gray-800 hover:bg-gray-700 text-white font-medium py-1.5 px-4 rounded-md text-sm flex-1"
-                >
+                <button onClick={() => setEditing(true)} className="btn-ghost flex-1 text-sm">
                   Edit Profile
                 </button>
               ) : (
-                <button className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-6 rounded-md text-sm">
+                <button className="btn-primary text-sm py-1.5">
                   Follow
                 </button>
               )}
@@ -749,58 +706,49 @@ const Profile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="border-t border-gray-800">
+        <div className="border-t border-dark-700/50">
           <div className="flex">
-            <button 
-              className={`flex-1 py-3 text-center flex items-center justify-center space-x-1 ${
-                tab === 'posts' 
-                  ? 'text-white border-t-2 border-white' 
-                  : 'text-gray-400 hover:bg-gray-900'
+            <button
+              className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+                tab === 'posts' ? 'text-white border-t-2 border-brand-500' : 'text-dark-400 hover:text-dark-200'
               }`}
               onClick={() => setTab('posts')}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
               <span className="text-xs font-medium">POSTS</span>
             </button>
-            
-            <button 
-              className={`flex-1 py-3 text-center flex items-center justify-center space-x-1 ${
-                tab === 'saved' 
-                  ? 'text-white border-t-2 border-white' 
-                  : 'text-gray-400 hover:bg-gray-900'
+            <button
+              className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+                tab === 'saved' ? 'text-white border-t-2 border-brand-500' : 'text-dark-400 hover:text-dark-200'
               }`}
               onClick={() => setTab('saved')}
             >
-              <BookmarkIcon className="w-5 h-5" />
+              <BookmarkIcon className="w-4 h-4" />
               <span className="text-xs font-medium">SAVED</span>
             </button>
-            
-            <button 
-              className={`flex-1 py-3 text-center flex items-center justify-center space-x-1 ${
-                tab === 'tagged' 
-                  ? 'text-white border-t-2 border-white' 
-                  : 'text-gray-400 hover:bg-gray-900'
+            <button
+              className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+                tab === 'tagged' ? 'text-white border-t-2 border-brand-500' : 'text-dark-400 hover:text-dark-200'
               }`}
               onClick={() => setTab('tagged')}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
               <span className="text-xs font-medium">TAGGED</span>
             </button>
           </div>
 
-          {/* Tab Content */}
           <div className="min-h-[300px] w-full">
             {tab === 'posts' && (
-              <div className="grid grid-cols-3 gap-2 w-full">
+              <div className="grid grid-cols-3 gap-1 p-1">
                 {profile?.posts?.length > 0 ? (
-                  profile.posts.map((post, index) => (
-                    <div key={post._id} className="aspect-square w-full overflow-hidden group">
-                      <PostGridItem 
-                        post={post} 
+                  profile.posts.map((post) => (
+                    <div key={post._id} className="aspect-square overflow-hidden rounded-lg">
+                      <PostGridItem
+                        post={post}
                         onClick={() => handlePostClick(post._id)}
                         isOwnProfile={isOwnProfile}
                         onDelete={handleDeletePost}
@@ -809,13 +757,11 @@ const Profile = () => {
                   ))
                 ) : (
                   <div className="col-span-3 flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-16 h-16 rounded-full border-2 border-gray-700 flex items-center justify-center mb-4">
-                      <PhotoIcon className="w-8 h-8 text-gray-500" />
+                    <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mb-4">
+                      <PhotoIcon className="w-8 h-8 text-dark-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-100 mb-2">No Posts Yet</h3>
-                    <p className="text-gray-400 max-w-md">
-                      When you share photos and videos, they'll appear on your profile.
-                    </p>
+                    <h3 className="text-lg font-bold mb-1">No Posts Yet</h3>
+                    <p className="text-dark-400 text-sm max-w-md">When you share photos and videos, they'll appear on your profile.</p>
                   </div>
                 )}
               </div>
@@ -823,38 +769,31 @@ const Profile = () => {
 
             {tab === 'saved' && (
               <div className="py-16 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full border-2 border-gray-700 flex items-center justify-center mb-4">
-                  <BookmarkIcon className="w-8 h-8 text-gray-400" />
+                <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mx-auto mb-4">
+                  <BookmarkIcon className="w-8 h-8 text-dark-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Saved</h3>
-                <p className="text-gray-400 max-w-xs mx-auto">
-                  Save photos and videos that you want to see again. No one is notified, and only you can see what you've saved.
-                </p>
+                <h3 className="text-lg font-bold mb-1">Saved</h3>
+                <p className="text-dark-400 text-sm max-w-xs mx-auto">Save photos and videos that you want to see again.</p>
               </div>
             )}
 
             {tab === 'tagged' && (
               <div className="py-16 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full border-2 border-gray-700 flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-2">Photos of You</h3>
-                <p className="text-gray-400 max-w-xs mx-auto">
-                  When people tag you in photos, they'll appear here.
-                </p>
+                <h3 className="text-lg font-bold mb-1">Photos of You</h3>
+                <p className="text-dark-400 text-sm max-w-xs mx-auto">When people tag you in photos, they'll appear here.</p>
               </div>
             )}
           </div>
         </div>
-
-        {/* Bottom spacing for mobile */}
-        <div className="h-16 md:hidden"></div>
       </div>
-      
+
       {/* Edit Profile Modal */}
-      <EditProfileModal 
+      <EditProfileModal
         isOpen={editing}
         onClose={() => setEditing(false)}
         user={profile}

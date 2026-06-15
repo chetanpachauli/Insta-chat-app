@@ -12,7 +12,8 @@ const UserSchema = new mongoose.Schema(
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
     savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
-    refreshTokens: { type: [String], default: [] }
+    refreshTokens: { type: [String], default: [] },
+    fcmTokens: { type: [String], default: [] }
   },
   { timestamps: true }
 );

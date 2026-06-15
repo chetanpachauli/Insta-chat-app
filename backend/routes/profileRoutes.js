@@ -23,5 +23,6 @@ router.put('/',
 )
 router.post('/:id/follow', protect, ctrl.followUser)
 router.post('/:id/unfollow', protect, ctrl.unfollowUser)
+router.get('/suggestions/all', protect, ctrl.getSuggestions)
 
 module.exports = router

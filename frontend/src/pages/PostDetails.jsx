@@ -35,39 +35,21 @@ const PostDetails = () => {
         setLoading(false);
       }
     };
-
-    if (currentUser) {
-      fetchPost();
-    }
+    if (currentUser) fetchPost();
   }, [postId, currentUser?._id, navigate]);
 
   const handleLike = async () => {
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-
+    if (!currentUser) { navigate('/login'); return; }
     const newLikeStatus = !isLiked;
-    
-    // Optimistic update
     setIsLiked(newLikeStatus);
     setLikesCount(prev => newLikeStatus ? prev + 1 : Math.max(0, prev - 1));
-    
     try {
-      await axios.post(`/api/posts/${postId}/like`, {
-        action: newLikeStatus ? 'like' : 'unlike'
-      }, { withCredentials: true });
-      
-      // Update the post data with the new like status
+      await axios.post(`/api/posts/${postId}/like`, { action: newLikeStatus ? 'like' : 'unlike' }, { withCredentials: true });
       setPost(prev => ({
         ...prev,
-        likes: newLikeStatus 
-          ? [...(prev?.likes || []), currentUser._id]
-          : (prev?.likes || []).filter(id => String(id) !== String(currentUser._id))
+        likes: newLikeStatus ? [...(prev?.likes || []), currentUser._id] : (prev?.likes || []).filter(id => String(id) !== String(currentUser._id))
       }));
     } catch (error) {
-      console.error('Error updating like:', error);
-      // Revert on error
       setIsLiked(!newLikeStatus);
       setLikesCount(prev => newLikeStatus ? Math.max(0, prev - 1) : prev + 1);
       toast.error('Failed to update like');
@@ -75,31 +57,16 @@ const PostDetails = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-
+    if (!currentUser) { navigate('/login'); return; }
     const newSaveStatus = !isSaved;
-    
-    // Optimistic update
     setIsSaved(newSaveStatus);
-    
     try {
-      await axios.post(`/api/posts/${postId}/save`, {
-        action: newSaveStatus ? 'save' : 'unsave'
-      }, { withCredentials: true });
-      
-      // Update the post data with the new save status
+      await axios.post(`/api/posts/${postId}/save`, { action: newSaveStatus ? 'save' : 'unsave' }, { withCredentials: true });
       setPost(prev => ({
         ...prev,
-        savedBy: newSaveStatus
-          ? [...(prev?.savedBy || []), currentUser._id]
-          : (prev?.savedBy || []).filter(id => String(id) !== String(currentUser._id))
+        savedBy: newSaveStatus ? [...(prev?.savedBy || []), currentUser._id] : (prev?.savedBy || []).filter(id => String(id) !== String(currentUser._id))
       }));
     } catch (error) {
-      console.error('Error updating save status:', error);
-      // Revert on error
       setIsSaved(!newSaveStatus);
       toast.error('Failed to update save status');
     }
@@ -107,18 +74,12 @@ const PostDetails = () => {
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
-    
     setIsDeleting(true);
     try {
       await axios.delete(`/api/posts/${postId}`, { withCredentials: true });
-      toast.success('Post deleted successfully');
-      if (post?.author?.username) {
-        navigate(`/profile/${post.author.username}`);
-      } else {
-        navigate('/');
-      }
+      toast.success('Post deleted');
+      navigate(post?.author?.username ? `/profile/${post.author.username}` : '/');
     } catch (error) {
-      console.error('Error deleting post:', error);
       toast.error(error.response?.data?.message || 'Failed to delete post');
     } finally {
       setIsDeleting(false);
@@ -128,202 +89,125 @@ const PostDetails = () => {
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!comment.trim()) return;
-    
     try {
-      const res = await axios.post(`/api/posts/${postId}/comment`, {
-        text: comment
-      }, { withCredentials: true });
-      
-      setPost(prev => ({
-        ...prev,
-        comments: [...(prev.comments || []), res.data.comment]
-      }));
-      
+      const res = await axios.post(`/api/posts/${postId}/comment`, { text: comment }, { withCredentials: true });
+      setPost(prev => ({ ...prev, comments: [...(prev.comments || []), res.data.comment] }));
       setComment('');
       toast.success('Comment added');
     } catch (error) {
-      console.error('Error adding comment:', error);
       toast.error('Failed to add comment');
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-t-transparent border-purple-500 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!post) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <p>Post not found</p>
-      </div>
-    );
+    return <div className="min-h-screen bg-dark-900 flex items-center justify-center text-white"><p>Post not found</p></div>;
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-black/80 backdrop-blur-sm p-4 border-b border-gray-800">
-        <div className="flex items-center">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full hover:bg-gray-800"
-          >
-            <XMarkIcon className="w-6 h-6" />
+    <div className="min-h-screen bg-dark-900 text-white pb-20 md:pb-0">
+      <header className="sticky top-0 z-10 bg-dark-900/80 backdrop-blur-md border-b border-dark-700/50 p-3">
+        <div className="flex items-center max-w-2xl mx-auto">
+          <button onClick={() => navigate(-1)} className="btn-icon mr-3">
+            <XMarkIcon className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold ml-4">Post</h1>
+          <h1 className="text-lg font-bold">Post</h1>
         </div>
       </header>
 
-      {/* Post Content */}
       <div className="max-w-2xl mx-auto">
         {/* Author Info */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <div className="flex items-center space-x-3">
-            <img 
-              src={post?.author?.profilePic || '/default-avatar.png'} 
-              alt={post?.author?.username} 
-              className="w-8 h-8 rounded-full object-cover"
+        <div className="flex items-center justify-between p-4 border-b border-dark-700/50">
+          <div className="flex items-center gap-3">
+            <img
+              src={post?.author?.profilePic || '/default-avatar.png'}
+              alt={post?.author?.username}
+              className="w-8 h-8 rounded-full object-cover cursor-pointer"
               onClick={() => post?.author?.username && navigate(`/profile/${post.author.username}`)}
-              style={{ cursor: 'pointer' }}
             />
-            <span 
-              className="font-semibold hover:underline cursor-pointer"
+            <span
+              className="font-semibold text-sm cursor-pointer hover:underline"
               onClick={() => post?.author?.username && navigate(`/profile/${post.author.username}`)}
             >
               {post?.author?.username}
             </span>
           </div>
           {post?.author?._id === currentUser?._id ? (
-            <div className="relative">
-              <button 
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full"
-                title="Delete post"
-              >
-                {isDeleting ? (
-                  <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <TrashIcon className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          ) : (
-            <button>
-              <EllipsisHorizontalIcon className="w-5 h-5" />
+            <button onClick={handleDelete} disabled={isDeleting} className="btn-icon text-red-400">
+              {isDeleting ? <span className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin block" /> : <TrashIcon className="w-5 h-5" />}
             </button>
-          )}
-        </div>
-        
-        {/* Post Media */}
-        <div className="bg-black">
-          {post.mediaType === 'video' ? (
-            <video 
-              src={post.mediaUrl || post.video} 
-              className="w-full max-h-[80vh] object-contain"
-              controls
-              autoPlay
-              loop
-              muted
-              playsInline
-              crossOrigin="anonymous"
-            />
           ) : (
-            <img 
-              src={post.mediaUrl || post.image} 
-              alt="Post" 
-              className="w-full max-h-[80vh] object-contain"
-              crossOrigin="anonymous"
-            />
+            <button className="btn-icon"><EllipsisHorizontalIcon className="w-5 h-5" /></button>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-4 space-y-2">
+        {/* Media */}
+        <div className="bg-black">
+          {post.mediaType === 'video' ? (
+            <video src={post.mediaUrl || post.video} className="w-full max-h-[80vh] object-contain" controls autoPlay loop muted playsInline crossOrigin="anonymous" />
+          ) : (
+            <img src={post.mediaUrl || post.image} alt="Post" className="w-full max-h-[80vh] object-contain" crossOrigin="anonymous" />
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="p-4 space-y-3">
           <div className="flex justify-between">
-            <div className="flex space-x-4">
-              <button onClick={handleLike} className="p-1">
-                {isLiked ? (
-                  <HeartIconSolid className="w-7 h-7 text-red-500" />
-                ) : (
-                  <HeartIcon className="w-7 h-7" />
-                )}
+            <div className="flex gap-3">
+              <button onClick={handleLike} className="btn-icon">
+                {isLiked ? <HeartIconSolid className="w-6 h-6 text-red-400" /> : <HeartIcon className="w-6 h-6" />}
               </button>
-              <button 
-                onClick={() => document.getElementById('commentInput')?.focus()} 
-                className="p-1"
-              >
-                <ChatBubbleLeftRightIcon className="w-7 h-7" />
+              <button onClick={() => document.getElementById('commentInput')?.focus()} className="btn-icon">
+                <ChatBubbleLeftRightIcon className="w-6 h-6" />
               </button>
-              <button className="p-1">
-                <PaperAirplaneIcon className="w-7 h-7 -rotate-45" />
-              </button>
+              <button className="btn-icon"><PaperAirplaneIcon className="w-6 h-6" /></button>
             </div>
-            <button onClick={handleSave} className="p-1">
-              {isSaved ? (
-                <BookmarkIconSolid className="w-7 h-7" />
-              ) : (
-                <BookmarkIcon className="w-7 h-7" />
-              )}
+            <button onClick={handleSave} className="btn-icon">
+              {isSaved ? <BookmarkIconSolid className="w-6 h-6" /> : <BookmarkIcon className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Likes Count */}
-          <p className="font-semibold">{likesCount.toLocaleString()} likes</p>
+          <p className="font-semibold text-sm">{likesCount.toLocaleString()} likes</p>
 
-          {/* Caption */}
-          <div className="mt-1">
+          <div className="text-sm">
             <span className="font-semibold mr-2">{post.author?.username}</span>
-            <span>{post.caption}</span>
+            {post.caption}
           </div>
 
           {/* Comments */}
-          <div className="mt-2">
-            {post.comments?.length > 0 && (
-              <button 
-                className="text-gray-400 text-sm"
-                onClick={() => {}}
-              >
-                View all {post.comments.length} comments
-              </button>
-            )}
-            
-            {/* Comments List */}
-            <div className="space-y-2 mt-2 max-h-60 overflow-y-auto">
-              {post.comments?.map(comment => (
-                <div key={comment._id} className="flex items-start">
-                  <span className="font-semibold mr-2">{comment.user?.username}</span>
-                  <span>{comment.text}</span>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-thin">
+            {post.comments?.map(comment => (
+              <div key={comment._id} className="text-sm">
+                <span className="font-semibold mr-2">{comment.user?.username || comment.author?.username || 'User'}</span>
+                <span className="text-dark-200">{comment.text}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Timestamp */}
-          <p className="text-xs text-gray-400 mt-2">
-            {new Date(post.createdAt).toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric'
-            })}
+          <p className="text-xs text-dark-400">
+            {new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
           </p>
 
           {/* Add Comment */}
-          <form onSubmit={handleAddComment} className="flex items-center mt-4 border-t border-gray-800 pt-4">
+          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-3 border-t border-dark-700/50">
             <input
               id="commentInput"
               type="text"
               placeholder="Add a comment..."
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm"
+              className="flex-1 bg-transparent text-sm placeholder:text-dark-400 focus:outline-none"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
-            <button 
+            <button
               type="submit"
-              className={`font-semibold ${comment.trim() ? 'text-blue-400' : 'text-blue-200'} text-sm`}
+              className={`text-sm font-semibold ${comment.trim() ? 'text-brand-400' : 'text-dark-500'}`}
               disabled={!comment.trim()}
             >
               Post

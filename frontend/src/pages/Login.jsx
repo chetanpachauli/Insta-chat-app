@@ -3,27 +3,18 @@ import { useNavigate, Link } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 
 export default function Login() {
-  const [form, setForm] = useState({
-    email: '',
-    password: ''
-  })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    })
-  }
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
-    
     try {
       const result = await login(form)
       if (!result.success) {
@@ -33,61 +24,79 @@ export default function Login() {
       }
     } catch (err) {
       setError('An unexpected error occurred')
-      console.error('Login error:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-zinc-950">
-      {/* Left visual — hidden on small screens */}
-      <div className="hidden md:flex w-1/2 items-center justify-center p-10">
-        <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-purple-700 via-pink-600 to-orange-400"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-purple-500"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-pink-700 via-red-600 to-yellow-400"></div>
-          <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-cyan-700 via-sky-600 to-indigo-500"></div>
+    <div className="min-h-screen flex bg-dark-900">
+      {/* Left visual */}
+      <div className="hidden md:flex w-1/2 items-center justify-center p-10 bg-dot-pattern">
+        <div className="grid grid-cols-2 gap-3 w-full max-w-lg">
+          {[
+            'from-brand-500 via-accent-pink to-accent-orange',
+            'from-blue-600 via-indigo-600 to-brand-500',
+            'from-accent-pink via-red-500 to-accent-orange',
+            'from-cyan-600 via-sky-500 to-indigo-600',
+          ].map((gradient, i) => (
+            <div
+              key={i}
+              className={`aspect-square rounded-2xl bg-gradient-to-br ${gradient} opacity-80 hover:opacity-100 transition-opacity duration-300 animate-scale-in`}
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Right form */}
+      {/* Form */}
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg p-8 shadow-sm">
-          <h2 className="text-3xl font-semibold text-white mb-4 text-center">Log in</h2>
-          {error && <div className="text-sm text-red-500 mb-3">{error}</div>}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input 
-              name="email" 
-              value={form.email} 
-              onChange={handleChange} 
-              placeholder="Email" 
-              type="email" 
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" 
-              required
-            />
-            <input 
-              name="password" 
-              value={form.password} 
-              onChange={handleChange} 
-              placeholder="Password" 
-              type="password" 
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-gray-100 placeholder-gray-400" 
-              required
-            />
+        <div className="w-full max-w-sm animate-slide-up">
+          <div className="card p-8">
+            <h2 className="text-2xl font-bold text-center mb-2 bg-gradient-brand bg-clip-text text-transparent">
+              Welcome back
+            </h2>
+            <p className="text-dark-400 text-sm text-center mb-6">Log in to your account</p>
 
-            <button 
-              type="submit" 
-              disabled={isLoading} 
-              className="w-full px-4 py-2 rounded text-white font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {isLoading ? (
-                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-              ) : 'Log in'}
-            </button>
-          </form>
+            {error && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2 mb-4">
+                {error}
+              </div>
+            )}
 
-          <div className="text-sm text-center text-zinc-400 mt-6">Don't have an account? <Link to="/signup" className="text-white font-semibold">Sign up</Link></div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Email"
+                type="email"
+                className="input-field"
+                required
+              />
+              <input
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Password"
+                type="password"
+                className="input-field"
+                required
+              />
+              <button type="submit" disabled={isLoading} className="btn-primary w-full flex items-center justify-center gap-2">
+                {isLoading ? (
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : 'Log in'}
+              </button>
+            </form>
+
+            <div className="text-sm text-center text-dark-400 mt-6">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-brand-400 font-semibold hover:underline">
+                Sign up
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -33,4 +33,7 @@ router.get('/users/:userId', chatCtrl.getUsersForSidebar);
 // DELETE /api/messages/delete/:id -> delete message
 router.delete('/delete/:id', chatCtrl.deleteMessage);
 
+// POST /api/messages/react/:messageId -> toggle reaction
+router.post('/react/:messageId', chatCtrl.toggleReaction);
+
 module.exports = router;

@@ -4,7 +4,6 @@ import { ArrowLeftIcon, HeartIcon, ChatBubbleLeftRightIcon } from '@heroicons/re
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import axios from 'axios';
 
-// Mock data - replace with actual API calls
 export default function Notifications() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
@@ -12,7 +11,6 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch notifications from API
     const fetchNotifications = async () => {
       try {
         const response = await axios.get('/api/notifications');
@@ -23,168 +21,127 @@ export default function Notifications() {
         setLoading(false);
       }
     };
-
     fetchNotifications();
   }, []);
 
-  // Filter notifications based on active tab
   const filteredNotifications = notifications.filter(notification => {
     if (activeTab === 'all') return true;
     return notification.type === activeTab;
   });
 
-  // Group notifications by date
   const groupedNotifications = filteredNotifications.reduce((groups, notification) => {
     const date = new Date(notification.createdAt).toLocaleDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
+    if (!groups[date]) groups[date] = [];
     groups[date].push(notification);
     return groups;
   }, {});
 
   const renderNotificationIcon = (type) => {
     switch (type) {
-      case 'like':
-        return <HeartIconSolid className="w-5 h-5 text-red-500" />;
-      case 'comment':
-        return <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-400" />;
-      case 'follow':
-        return <HeartIconSolid className="w-5 h-5 text-purple-500" />;
-      default:
-        return <HeartIcon className="w-5 h-5" />;
+      case 'like': return <HeartIconSolid className="w-4 h-4 text-red-400" />;
+      case 'comment': return <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-400" />;
+      case 'follow': return <HeartIconSolid className="w-4 h-4 text-brand-400" />;
+      default: return <HeartIcon className="w-4 h-4" />;
     }
   };
 
   const renderNotificationMessage = (notification) => {
     switch (notification.type) {
-      case 'like':
-        return `${notification.from?.username || 'Someone'} liked your post`;
-      case 'comment':
-        return `${notification.from?.username || 'Someone'} commented: ${notification.comment?.text || ''}`;
-      case 'follow':
-        return `${notification.from?.username || 'Someone'} started following you`;
-      default:
-        return 'New notification';
+      case 'like': return `${notification.from?.username || 'Someone'} liked your post`;
+      case 'comment': return `${notification.from?.username || 'Someone'} commented: ${notification.comment?.text || ''}`;
+      case 'follow': return `${notification.from?.username || 'Someone'} started following you`;
+      default: return 'New notification';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-black bg-opacity-80 backdrop-blur-sm p-4 border-b border-gray-800">
-        <div className="flex items-center">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 mr-4 hover:bg-gray-800 rounded-full"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-          </button>
-          <h1 className="text-xl font-bold">Notifications</h1>
-        </div>
-        
-        {/* Tabs */}
-        <div className="flex space-x-4 mt-4 border-b border-gray-800">
-          <button
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'all' ? 'text-white border-b-2 border-white' : 'text-gray-400'
-            }`}
-            onClick={() => setActiveTab('all')}
-          >
-            All
-          </button>
-          <button
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'like' ? 'text-white border-b-2 border-white' : 'text-gray-400'
-            }`}
-            onClick={() => setActiveTab('like')}
-          >
-            Likes
-          </button>
-          <button
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'comment' ? 'text-white border-b-2 border-white' : 'text-gray-400'
-            }`}
-            onClick={() => setActiveTab('comment')}
-          >
-            Comments
-          </button>
-          <button
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'follow' ? 'text-white border-b-2 border-white' : 'text-gray-400'
-            }`}
-            onClick={() => setActiveTab('follow')}
-          >
-            Follows
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-dark-900 text-white pb-20 md:pb-0">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-dark-900/80 backdrop-blur-md border-b border-dark-700/50">
+          <div className="flex items-center p-4">
+            <button onClick={() => navigate(-1)} className="btn-icon mr-3">
+              <ArrowLeftIcon className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl font-bold">Notifications</h1>
+          </div>
 
-      {/* Notifications List */}
-      <div className="divide-y divide-gray-800">
-        {Object.entries(groupedNotifications).length > 0 ? (
-          Object.entries(groupedNotifications).map(([date, dateNotifications]) => (
-            <div key={date} className="mb-6">
-              <div className="px-4 py-2 text-sm text-gray-400">{date}</div>
-              {dateNotifications.map((notification) => (
-                <div 
-                  key={notification._id} 
-                  className="flex items-center p-4 hover:bg-gray-900 cursor-pointer transition-colors"
-                  onClick={() => notification.postId && navigate(`/p/${notification.postId}`)}
-                >
-                  <div className="flex-shrink-0 mr-3">
-                    <div className="relative">
+          {/* Tabs */}
+          <div className="flex px-4 gap-4 border-b border-dark-700/50">
+            {['all', 'like', 'comment', 'follow'].map(tab => (
+              <button
+                key={tab}
+                className={`pb-3 text-sm font-medium capitalize ${
+                  activeTab === tab
+                    ? 'text-white border-b-2 border-brand-500'
+                    : 'text-dark-400 hover:text-dark-200'
+                } transition-colors`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab === 'like' ? 'Likes' : tab === 'comment' ? 'Comments' : tab === 'follow' ? 'Follows' : 'All'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notifications List */}
+        <div className="divide-y divide-dark-700/50">
+          {Object.entries(groupedNotifications).length > 0 ? (
+            Object.entries(groupedNotifications).map(([date, dateNotifications]) => (
+              <div key={date}>
+                <div className="px-4 py-2 text-xs font-medium text-dark-400 uppercase tracking-wider">{date}</div>
+                {dateNotifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    className="flex items-center p-4 hover:bg-dark-800/50 cursor-pointer transition-colors"
+                    onClick={() => notification.postId && navigate(`/p/${notification.postId}`)}
+                  >
+                    <div className="relative shrink-0 mr-3">
                       <img
                         src={notification.from?.profilePic || '/default-avatar.png'}
                         alt={notification.from?.username || 'User'}
                         className="w-10 h-10 rounded-full object-cover"
                       />
-                      <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-0.5">
-                        {renderNotificationIcon(notification.type)}
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-dark-900 flex items-center justify-center">
+                        <div className="w-4 h-4 rounded-full bg-dark-700 flex items-center justify-center">
+                          {renderNotificationIcon(notification.type)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">
-                      <span className="font-semibold">{notification.from?.username || 'Someone'}</span>{' '}
-                      {renderNotificationMessage(notification)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  {notification.postImage && (
-                    <div className="ml-4 flex-shrink-0">
-                      <img
-                        src={notification.postImage}
-                        alt="Post preview"
-                        className="w-12 h-12 rounded-md object-cover"
-                      />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">
+                        <span className="font-semibold">{notification.from?.username || 'Someone'}</span>{' '}
+                        {renderNotificationMessage(notification)}
+                      </p>
+                      <p className="text-xs text-dark-400 mt-0.5">
+                        {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {notification.postImage && (
+                      <img src={notification.postImage} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mb-4">
+                <HeartIcon className="w-8 h-8 text-dark-400" />
+              </div>
+              <h3 className="text-lg font-bold mb-1">No notifications yet</h3>
+              <p className="text-dark-400 text-sm max-w-xs">When you get notifications, they'll appear here.</p>
             </div>
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-              <HeartIcon className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">No notifications yet</h3>
-            <p className="text-gray-400 max-w-xs">
-              When you get notifications, they'll appear here.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
