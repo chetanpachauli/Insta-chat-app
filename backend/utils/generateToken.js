@@ -46,8 +46,14 @@ const setAccessTokenCookie = (res, userId) => {
   return token;
 };
 
+// Generate and return access token (for response body)
+const getAccessToken = (userId) => {
+  return generateAccessToken(userId);
+};
+
 module.exports = { 
   generateAccessToken,
   generateRefreshToken,
-  setAccessTokenCookie 
+  setAccessTokenCookie,
+  getAccessToken
 };

@@ -22,7 +22,38 @@ function AuthProvider({ children }) {
   axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   axios.defaults.withCredentials = true;
 
-  const setSession = useCallback(({ user: u, accessToken }) => {
+  // Axios interceptor for auto-refresh on 401
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (res) => res,
+      async (err) => {
+        const original = err.config;
+        if (err.response?.status === 401 && !original._retry) {
+          original._retry = true;
+          const storedRefresh = localStorage.getItem('refreshToken');
+          if (storedRefresh) {
+            try {
+              const { data } = await axios.post('/api/auth/refresh-token', { refreshToken: storedRefresh });
+              if (data.accessToken) {
+                localStorage.setItem('token', data.accessToken);
+                localStorage.setItem('refreshToken', data.refreshToken);
+                axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+                original.headers['Authorization'] = `Bearer ${data.accessToken}`;
+                return axios(original);
+              }
+            } catch { /* refresh failed */ }
+          }
+          localStorage.clear();
+          delete axios.defaults.headers.common['Authorization'];
+          setUser(null);
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, []);
+
+  const setSession = useCallback(({ user: u, accessToken, refreshToken }) => {
     if (!u) return;
     try {
       localStorage.setItem('user', JSON.stringify(u));
@@ -30,34 +61,51 @@ function AuthProvider({ children }) {
         localStorage.setItem('token', accessToken);
         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       }
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
       setUser(u);
     } catch (error) {
       console.error('Error setting session:', error);
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       setUser(null);
     }
   }, []);
 
   const checkAuth = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return { isAuthenticated: false, user: null };
+      let token = localStorage.getItem('token');
 
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Try refresh if we have a stored refresh token
+      const storedRefresh = localStorage.getItem('refreshToken');
+      if (!token && storedRefresh) {
+        try {
+          const { data } = await axios.post('/api/auth/refresh-token', { refreshToken: storedRefresh });
+          if (data.accessToken) {
+            token = data.accessToken;
+            localStorage.setItem('token', token);
+            localStorage.setItem('refreshToken', data.refreshToken);
+          }
+        } catch { /* refresh failed */ }
+      }
+
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await axios.get('/api/auth/check', { timeout: 5000 });
 
       if (res.data?.user) {
         setUser(res.data.user);
-        if (res.data.accessToken) {
-          localStorage.setItem('token', res.data.accessToken);
-        }
         return { isAuthenticated: true, user: res.data.user };
       }
       throw new Error('Invalid user');
     } catch (err) {
       setUser(null);
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       delete axios.defaults.headers.common['Authorization'];
       return { isAuthenticated: false, user: null };
@@ -100,7 +148,7 @@ function AuthProvider({ children }) {
   const login = useCallback(async (credentials) => {
     try {
       const res = await axios.post('/api/auth/login', credentials);
-      setSession({ user: res.data.user, accessToken: res.data.accessToken });
+      setSession({ user: res.data.user, accessToken: res.data.accessToken, refreshToken: res.data.refreshToken });
       navigate('/');
       return { success: true };
     } catch (err) {
@@ -114,7 +162,7 @@ const signup = useCallback(async (userData) => {
   try {
     const res = await axios.post('/api/auth/signup', userData);
     if (res.data.user) {
-      setSession({ user: res.data.user, accessToken: res.data.accessToken });
+      setSession({ user: res.data.user, accessToken: res.data.accessToken, refreshToken: res.data.refreshToken });
       return { success: true };
     }
   } catch (err) {
@@ -127,6 +175,12 @@ const signup = useCallback(async (userData) => {
 }, [setSession]);
 
   const logout = useCallback(async () => {
+    try {
+      const storedRefresh = localStorage.getItem('refreshToken');
+      if (storedRefresh) {
+        await axios.post('/api/auth/logout', { refreshToken: storedRefresh }).catch(() => {});
+      }
+    } catch { /* ignore */ }
     localStorage.clear();
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);

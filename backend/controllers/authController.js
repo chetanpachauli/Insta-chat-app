@@ -3,7 +3,8 @@ const User = require('../models/User');
 const { 
   generateAccessToken, 
   generateRefreshToken, 
-  setAccessTokenCookie 
+  setAccessTokenCookie,
+  getAccessToken
 } = require('../utils/generateToken');
 const jwt = require('jsonwebtoken');
 
@@ -22,7 +23,7 @@ exports.signup = async (req, res) => {
     const saved = await user.save();
 
     const refreshToken = generateRefreshToken(saved._id);
-    // set access token as HTTP-only cookie
+    const accessToken = getAccessToken(saved._id);
     setAccessTokenCookie(res, saved._id);
 
     saved.refreshTokens.push(refreshToken);
@@ -30,6 +31,7 @@ exports.signup = async (req, res) => {
 
     res.status(201).json({
       user: { id: saved._id, username: saved.username, email: saved.email, profilePic: saved.profilePic, bio: saved.bio },
+      accessToken,
       refreshToken
     });
   } catch (err) {
@@ -49,7 +51,7 @@ exports.login = async (req, res) => {
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
     const refreshToken = generateRefreshToken(user._id);
-    // set access token as HTTP-only cookie
+    const accessToken = getAccessToken(user._id);
     setAccessTokenCookie(res, user._id);
 
     user.refreshTokens.push(refreshToken);
@@ -57,6 +59,7 @@ exports.login = async (req, res) => {
 
     res.json({
       user: { id: user._id, username: user.username, email: user.email, profilePic: user.profilePic, bio: user.bio },
+      accessToken,
       refreshToken
     });
   } catch (err) {
@@ -165,7 +168,6 @@ exports.refreshToken = async (req, res) => {
     // Set the new access token as an HTTP-only cookie
     setAccessTokenCookie(res, user._id);
 
-    // Return the new refresh token in the response body
     res.json({ 
       user: { 
         id: user._id, 
@@ -174,6 +176,7 @@ exports.refreshToken = async (req, res) => {
         profilePic: user.profilePic,
         bio: user.bio
       },
+      accessToken: newAccessToken,
       refreshToken: newRefreshToken 
     });
   } catch (err) {
