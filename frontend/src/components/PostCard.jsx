@@ -2,9 +2,11 @@ import React, { useState, useEffect, useContext } from 'react'
 import { AuthContext } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { Heart, MessageCircle, Bookmark, Send, Trash2, Edit3 } from 'lucide-react'
+import { Heart, MessageCircle, Bookmark, Send, Trash2, Edit3, Archive, ArchiveRestore } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useConfirm } from '../hooks/useConfirm'
 import Avatar from './Avatar'
+import ShareModal from './ShareModal'
 
 export default function PostCard({ post, onLikeChanged, onDeleted }) {
   const { user } = useContext(AuthContext)
@@ -19,6 +21,8 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
   const [dblLikeAnim, setDblLikeAnim] = useState(false)
   const [comments, setComments] = useState(post.comments || [])
   const [commentText, setCommentText] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
+  const [archived, setArchived] = useState(post.isArchived || false)
 
   useEffect(() => {
     setLiked((post.likes || []).map(x => String(x)).includes(String(user?.id)))
@@ -50,8 +54,21 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
     } catch (err) { console.error(err) }
   }
 
+  const confirmDel = useConfirm();
+
+  const handleArchive = async () => {
+    try {
+      const res = await axios.put(`/api/posts/${post._id}/archive`, {}, { withCredentials: true });
+      setArchived(res.data.isArchived);
+      toast.success(res.data.isArchived ? 'Post archived' : 'Post restored');
+      if (onDeleted) onDeleted(post._id);
+    } catch (err) {
+      toast.error('Failed to archive post');
+    }
+  };
+
   const handleDelete = async () => {
-    if (!window.confirm('Delete this post?')) return
+    if (!(await confirmDel('Delete this post?'))) return
     try {
       await axios.delete(`/api/posts/${post._id}`)
       toast.success('Post deleted')
@@ -96,6 +113,9 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
                 <button onClick={() => { setShowMenu(false); setEditing(true); setEditCaption(post.caption || ''); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
                   <Edit3 className="w-4 h-4" /> Edit
                 </button>
+                <button onClick={() => { setShowMenu(false); handleArchive(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
+                  {archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />} {archived ? 'Restore' : 'Archive'}
+                </button>
                 <button onClick={() => { setShowMenu(false); handleDelete(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-dark-700">
                   <Trash2 className="w-4 h-4" /> Delete
                 </button>
@@ -137,7 +157,7 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
           </button>
           <button className="btn-icon text-dark-300"><MessageCircle className="w-5 h-5" /></button>
           <div className="ml-auto flex items-center gap-1">
-            <button className="btn-icon text-dark-300"><Send className="w-5 h-5" /></button>
+            <button onClick={() => setShareOpen(true)} className="btn-icon text-dark-300"><Send className="w-5 h-5" /></button>
             <button onClick={toggleSave} className={`btn-icon ${saved ? 'text-yellow-400' : 'text-dark-300'}`}>
               <Bookmark className={`w-5 h-5 ${saved ? 'fill-yellow-400' : ''}`} />
             </button>
@@ -197,6 +217,7 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
           </button>
         </div>
       </div>
+      <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} post={post} />
     </div>
   )
 }

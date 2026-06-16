@@ -9,7 +9,7 @@ const sizeMap = {
   'xl': { size: 56, text: 'text-xl' },
 };
 
-function Avatar({ user = {}, size = 'md', className = '' }) {
+function Avatar({ user = {}, size = 'md', className = '', isOnline = false }) {
   const [imageError, setImageError] = useState(false);
   
   // Handle both string and number sizes
@@ -54,19 +54,25 @@ function Avatar({ user = {}, size = 'md', className = '' }) {
   }
 
   return (
-    <img 
-      src={imageUrl}
-      alt={user?.username || user?.name || 'avatar'}
-      onError={handleImageError}
-      style={style}
-      className={`rounded-full object-cover ${className}`}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-    />
+    <div className="relative inline-flex shrink-0" style={style}>
+      <img 
+        src={imageUrl}
+        alt={user?.username || user?.name || 'avatar'}
+        onError={handleImageError}
+        style={{ width: '100%', height: '100%' }}
+        className={`rounded-full object-cover ${className}`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      {isOnline && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-dark-900 rounded-full" />
+      )}
+    </div>
   );
 }
 
 Avatar.propTypes = {
+  isOnline: PropTypes.bool,
   user: PropTypes.shape({
     profilePic: PropTypes.string,
     avatar: PropTypes.string,

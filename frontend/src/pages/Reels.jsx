@@ -11,6 +11,7 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
+import ShareModal from '../components/ShareModal';
 
 function ReelVideo({ post, index, videoRefs }) {
   const observerRef = useRef(null);
@@ -46,7 +47,7 @@ function ReelVideo({ post, index, videoRefs }) {
     };
   }, []);
 
-  const src = post.mediaUrl || post.video || post.image;
+  const src = post.image;
 
   const isVideo = post.mediaType === 'video' ||
     post.mimetype?.includes('video') ||
@@ -94,6 +95,7 @@ const MemoizedReelVideo = React.memo(ReelVideo);
 export default function Reels() {
   const navigate = useNavigate();
   const { user: currentUser } = useContext(AuthContext);
+  const [sharePost, setSharePost] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState({});
@@ -208,20 +210,7 @@ export default function Reels() {
     lastTap.current = now;
   };
 
-  const handleShare = async (post) => {
-    const shareData = {
-      title: 'Check out this Reel',
-      text: post.caption,
-      url: `${window.location.origin}/reels/${post._id}`
-    };
-
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch (err) { /* cancelled */ }
-    } else {
-      navigator.clipboard.writeText(shareData.url);
-      toast.success('Link copied!');
-    }
-  };
+  const handleShare = (post) => setSharePost(post);
 
   const safePosts = useMemo(
     () => Array.isArray(posts) ? posts.filter(post => post && post._id) : [],
@@ -317,6 +306,7 @@ export default function Reels() {
           </div>
         ))}
       </div>
+      <ShareModal isOpen={!!sharePost} onClose={() => setSharePost(null)} post={sharePost} />
     </div>
   );
 }

@@ -13,7 +13,8 @@ const PostSchema = new mongoose.Schema({
   caption: { type: String, default: '' },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   comments: [CommentSchema],
-  tags: [{ type: String }]
+  tags: [{ type: String }],
+  isArchived: { type: Boolean, default: false }
 }, { timestamps: true });
 
 PostSchema.statics.extractHashtags = function (caption) {

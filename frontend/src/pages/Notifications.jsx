@@ -102,7 +102,7 @@ export default function Notifications() {
                   <div
                     key={notification._id}
                     className="flex items-center p-4 hover:bg-dark-800/50 cursor-pointer transition-colors"
-                    onClick={() => notification.postId && navigate(`/p/${notification.postId}`)}
+                    onClick={() => notification.post && navigate(`/p/${notification.post}`)}
                   >
                     <div className="relative shrink-0 mr-3">
                       <img
@@ -125,8 +125,8 @@ export default function Notifications() {
                         {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    {notification.postImage && (
-                      <img src={notification.postImage} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" />
+                    {notification.post?.image && (
+                      <img src={notification.post.image} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" />
                     )}
                   </div>
                 ))}

@@ -4,12 +4,13 @@ const User = require('../models/User');
 exports.createStory = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { image } = req.body;
+    const { image, closeFriendsOnly } = req.body;
     if (!image) return res.status(400).json({ message: 'Image is required' });
 
     const story = await Story.create({
       author: userId,
       image,
+      closeFriendsOnly: closeFriendsOnly || false,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
     res.status(201).json(story);
@@ -24,7 +25,7 @@ exports.getStories = async (req, res) => {
 
     const followingIds = [...user.following, userId];
 
-    const stories = await Story.find({
+    const allStories = await Story.find({
       author: { $in: followingIds },
       $or: [
         { expiresAt: { $gt: new Date() } },
@@ -33,6 +34,15 @@ exports.getStories = async (req, res) => {
     })
       .populate('author', 'username profilePic')
       .sort('-createdAt');
+
+    // Filter close friends stories
+    const closeFriendIds = (user.closeFriends || []).map(id => String(id));
+    const stories = allStories.filter(s => {
+      if (s.closeFriendsOnly) {
+        return String(s.author._id) === String(userId) || closeFriendIds.includes(String(s.author._id));
+      }
+      return true;
+    });
 
     const grouped = {};
     stories.forEach(s => {
@@ -47,6 +57,16 @@ exports.getStories = async (req, res) => {
     });
 
     res.json(Object.values(grouped));
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }); }
+};
+
+exports.getStoryViews = async (req, res) => {
+  try {
+    const { storyId } = req.params;
+    const story = await Story.findById(storyId)
+      .populate('viewedBy', 'username profilePic');
+    if (!story) return res.status(404).json({ message: 'Story not found' });
+    res.json(story.viewedBy);
   } catch (err) { res.status(500).json({ message: err.message || 'Server error' }); }
 };
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, TrashIcon, EyeIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import { useConfirm } from '../hooks/useConfirm';
+import { toast } from 'react-hot-toast';
 
 export default function StoryViewer({ storyGroups, initialIndex, currentUserId, onClose }) {
+  const confirm = useConfirm();
   const [groupIndex, setGroupIndex] = useState(initialIndex);
   const [storyIndex, setStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -12,6 +15,10 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
   const currentGroup = storyGroups[groupIndex];
   const stories = currentGroup?.stories || [];
   const currentStory = stories[storyIndex];
+  const [showViews, setShowViews] = useState(false);
+  const [viewers, setViewers] = useState([]);
+  const [replyText, setReplyText] = useState('');
+  const isOwnStory = String(currentGroup?.user?._id || currentGroup?.user?.id) === String(currentUserId);
 
   const markViewed = useCallback(async (storyId) => {
     try { await axios.post(`/api/stories/${storyId}/view`, {}, { withCredentials: true }); } catch (e) {}
@@ -68,6 +75,32 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  const fetchViews = async () => {
+    if (!currentStory?._id) return;
+    try {
+      const res = await axios.get(`/api/stories/${currentStory._id}/views`, { withCredentials: true });
+      setViewers(res.data || []);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleReply = async () => {
+    const text = replyText.trim();
+    if (!text || !currentStory?._id || !currentGroup?.user?._id) return;
+    try {
+      const formData = new FormData();
+      formData.append('message', `📸 Reply to story: ${text}`);
+      formData.append('receiverId', currentGroup.user._id);
+      await axios.post(`/api/messages/send/${currentUserId}`, formData, {
+        withCredentials: true,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(`Replied to ${currentGroup.user.username || 'user'}`);
+      setReplyText('');
+    } catch (e) {
+      toast.error('Failed to send reply');
+    }
+  };
+
   if (!currentStory) return null;
 
   return (
@@ -103,9 +136,40 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
               {new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white">
-            <XMarkIcon className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            {isOwnStory && (
+              <>
+                <button
+                  onClick={() => { fetchViews(); setShowViews(!showViews); }}
+                  className="text-white/60 hover:text-white relative"
+                  title="View story views"
+                >
+                  <EyeIcon className="w-5 h-5" />
+                  {currentStory?.viewedBy?.length > 0 && (
+                    <span className="absolute -top-1 -right-1 text-[10px] bg-brand-500 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">
+                      {currentStory.viewedBy.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!(await confirm('Delete this story?'))) return;
+                    try {
+                      await axios.delete(`/api/stories/${currentStory._id}`, { withCredentials: true });
+                      onClose();
+                    } catch (e) { console.error('Failed to delete story'); }
+                  }}
+                  className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-medium"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                  Delete
+                </button>
+              </>
+            )}
+            <button onClick={onClose} className="text-white/80 hover:text-white">
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Story image */}
@@ -114,6 +178,46 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
           className="w-full h-full object-contain"
           alt="story"
         />
+
+        {/* Views modal */}
+        {showViews && (
+          <div className="absolute bottom-20 left-4 right-4 z-30 bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700 max-h-48 overflow-y-auto">
+            <div className="p-3 border-b border-dark-700">
+              <p className="text-sm font-semibold">Views ({viewers.length})</p>
+            </div>
+            {viewers.length === 0 ? (
+              <p className="text-xs text-dark-400 p-3">No views yet</p>
+            ) : (
+              viewers.map(v => (
+                <div key={v._id} className="flex items-center gap-2 p-2 hover:bg-dark-700/50">
+                  <img src={v.profilePic || '/default-avatar.png'} className="w-7 h-7 rounded-full object-cover" alt="" />
+                  <span className="text-sm">{v.username}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Reply input */}
+        {!isOwnStory && (
+          <div className="absolute bottom-4 left-4 right-4 z-30 flex items-center gap-2">
+            <input
+              type="text"
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleReply(); }}
+              placeholder="Reply to this story..."
+              className="flex-1 bg-dark-800/80 backdrop-blur-sm text-white px-4 py-2.5 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 placeholder:text-dark-400 border border-dark-700"
+            />
+            <button
+              onClick={handleReply}
+              disabled={!replyText.trim()}
+              className={`btn-icon rounded-full p-2.5 ${replyText.trim() ? 'text-brand-400 bg-brand-500/10' : 'text-dark-500'}`}
+            >
+              <PaperAirplaneIcon className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         {/* Tap zones */}
         <div

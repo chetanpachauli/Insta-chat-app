@@ -7,6 +7,7 @@ const MessageSchema = new mongoose.Schema(
     conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' },
     message: { type: String, default: '' },
     image: { type: String, default: '' },
+  audio: { type: String, default: '' },
     isSeen: { type: Boolean, default: false },
     reactions: [{
       emoji: { type: String, required: true },

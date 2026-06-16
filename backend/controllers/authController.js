@@ -1,10 +1,14 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Post = require('../models/Post');
+const Message = require('../models/Message');
+const Story = require('../models/Story');
+const Notification = require('../models/Notification');
 const { 
   generateAccessToken, 
   generateRefreshToken, 
-  setAccessTokenCookie,
-  getAccessToken
+  getAccessToken, 
+  setAccessTokenCookie 
 } = require('../utils/generateToken');
 const jwt = require('jsonwebtoken');
 
@@ -90,7 +94,7 @@ exports.checkAuth = async (req, res) => {
     try { decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET) } catch (e) { return res.status(401).json({ message: 'Invalid token' }) }
     const user = await User.findById(decoded.id).select('-password -refreshTokens')
     if (!user) return res.status(401).json({ message: 'User not found' })
-    res.json({ user: { id: user._id, username: user.username, email: user.email, profilePic: user.profilePic, bio: user.bio } })
+    res.json({ user: { id: user._id, username: user.username, email: user.email, profilePic: user.profilePic, bio: user.bio, isPrivate: user.isPrivate } })
   } catch (err) {
     res.status(500).json({ message: err.message || 'Server error' })
   }
@@ -118,6 +122,44 @@ exports.logout = async (req, res) => {
 exports.deleteAccount = async (req, res) => {
   try {
     const userId = req.user._id;
+    
+    // Delete all posts by the user
+    await Post.deleteMany({ author: userId });
+    
+    // Delete all messages sent or received by the user
+    await Message.deleteMany({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    });
+    
+    // Delete all stories by the user
+    await Story.deleteMany({ author: userId });
+    
+    // Delete all notifications to or from the user
+    await Notification.deleteMany({
+      $or: [{ user: userId }, { from: userId }]
+    });
+    
+    // Remove user from followers/following lists of other users
+    await User.updateMany(
+      { followers: userId },
+      { $pull: { followers: userId } }
+    );
+    await User.updateMany(
+      { following: userId },
+      { $pull: { following: userId } }
+    );
+    
+    // Remove user's likes from all posts
+    await Post.updateMany(
+      { likes: userId },
+      { $pull: { likes: userId } }
+    );
+    
+    // Remove user's comments from all posts
+    await Post.updateMany(
+      { 'comments.user': userId },
+      { $pull: { comments: { user: userId } } }
+    );
     
     // Delete the user from the database
     await User.findByIdAndDelete(userId);

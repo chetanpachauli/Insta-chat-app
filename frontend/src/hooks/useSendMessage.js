@@ -5,7 +5,7 @@ import ChatContext from '../context/ChatContext'
 
 export default function useSendMessage() {
   const { user } = useContext(AuthContext)
-  const { sendMessage, addLocalMessage } = useContext(ChatContext)
+  const { sendMessage } = useContext(ChatContext)
 
   const uploadImageToCloudinary = async (file) => {
     const url = import.meta.env.VITE_CLOUDINARY_URL

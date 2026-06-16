@@ -4,7 +4,8 @@ import AuthProvider, { AuthContext, useAuth } from './context/AuthContext';
 import ChatProvider from './context/ChatContext';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
-import { setupAxiosInterceptors } from './utils/axiosConfig';
+
+import { ConfirmProvider } from './hooks/useConfirm';
 
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
@@ -19,6 +20,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const CreatePostPage = lazy(() => import('./pages/CreatePostPage'));
   const PostDetails = lazy(() => import('./pages/PostDetails'));
   const Settings = lazy(() => import('./pages/Settings'));
+  const CloseFriends = lazy(() => import('./pages/CloseFriends'));
 
 function LoadingSpinner() {
   return (
@@ -41,7 +43,6 @@ function AppRoutes() {
 
   useEffect(() => {
     const initialize = async () => {
-      const cleanupInterceptors = setupAxiosInterceptors(navigate);
       try {
         await checkAuth();
       } catch (error) {
@@ -49,9 +50,6 @@ function AppRoutes() {
       } finally {
         setLoading(false);
       }
-      return () => {
-        if (cleanupInterceptors) cleanupInterceptors();
-      };
     };
     initialize();
   }, [checkAuth, navigate]);
@@ -87,6 +85,7 @@ function AppRoutes() {
       <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
       <Route path="/p/:postId" element={<ProtectedRoute><PostDetails /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/close-friends" element={<ProtectedRoute><CloseFriends /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -96,18 +95,20 @@ function AppWithProviders() {
   return (
     <AuthProvider>
       <ChatProvider>
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            style: {
-              background: '#18181b',
-              color: '#fff',
-              border: '1px solid #27272a',
-              borderRadius: '12px',
-            },
-          }}
-        />
-        <AppRoutes />
+        <ConfirmProvider>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                background: '#18181b',
+                color: '#fff',
+                border: '1px solid #27272a',
+                borderRadius: '12px',
+              },
+            }}
+          />
+          <AppRoutes />
+        </ConfirmProvider>
       </ChatProvider>
     </AuthProvider>
   );

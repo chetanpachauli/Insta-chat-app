@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
-import api, { setupAxiosInterceptors } from '../utils/axiosConfig';
+import api from '../utils/axiosConfig';
 import { toast } from 'react-hot-toast';
 
 const ChatContext = createContext(null);
@@ -150,12 +150,6 @@ const ChatProvider = ({ children }) => {
     setOnlineUsers(prev => prev.filter(id => id !== userId));
   }, []);
 
-  useEffect(() => {
-    // Initialize axios interceptors
-    const cleanupInterceptors = setupAxiosInterceptors();
-    return () => cleanupInterceptors();
-  }, []);
-
   // WebSocket connection management
   useEffect(() => {
     // Skip if no user ID or if socket is already initialized
@@ -232,7 +226,21 @@ const ChatProvider = ({ children }) => {
       { event: 'connect', handler: handleConnect },
       { event: 'connect_error', handler: handleConnectError },
       { event: 'disconnect', handler: handleDisconnect },
-      { event: 'receiveMessage', handler: handleMessage },
+      { event: 'newMessage', handler: handleMessage },
+      { event: 'messageSeen', handler: ({ seenBy, chatId }) => {
+        setMessages(prev => {
+          const key = chatId || seenBy;
+          if (!prev[key]) return prev;
+          return {
+            ...prev,
+            [key]: prev[key].map(msg =>
+              String(msg.senderId) === String(seenBy)
+                ? { ...msg, isSeen: true }
+                : msg
+            )
+          };
+        });
+      }},
       { event: 'typing', handler: handleTyping },
       { event: 'stopTyping', handler: handleStopTyping },
       { event: 'userOnline', handler: handleUserOnline },
@@ -300,6 +308,23 @@ const ChatProvider = ({ children }) => {
     }
   }, [userId]);
 
+  // Mark messages as seen when selecting a chat
+  useEffect(() => {
+    const chatId = selectedChat?._id || selectedChat?.id;
+    if (!chatId || !userIdRef.current) return;
+    
+    const timeout = setTimeout(async () => {
+      try {
+        await api.post(`/messages/seen/${chatId}`);
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('markSeen', { userId: userIdRef.current, otherId: chatId });
+        }
+      } catch (e) { /* silent */ }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [selectedChat?._id, selectedChat?.id]);
+
   const fetchMessages = useCallback(async (otherUserId) => {
     const currentUserId = userIdRef.current;
     console.log("Context: fetchMessages called with Sender:", currentUserId, "and Receiver:", otherUserId);
@@ -310,11 +335,12 @@ const ChatProvider = ({ children }) => {
     }
 
     const chatKey = String(otherUserId);
-    if (isLoading && messages[chatKey]?.length > 0) {
+    if (isFetchingRef.current) {
       console.log('Skipping fetch - already loading messages for chat:', chatKey);
-      return messages[chatKey];
+      return [];
     }
 
+    isFetchingRef.current = true;
     setIsLoading(true);
     console.log(`Fetching messages between ${currentUserId} and ${otherUserId}`);
 
@@ -335,10 +361,11 @@ const ChatProvider = ({ children }) => {
       return [];
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [isLoading, messages]);
+  }, []); // stable — no state deps to avoid infinite loops
 
-  const sendMessage = useCallback(async ({ receiverId, message, image = null }) => {
+  const sendMessage = useCallback(async ({ receiverId, message, image = null, audio = null }) => {
     const chatId = receiverId;
     const currentUserId = userIdRef.current;
 
@@ -366,6 +393,7 @@ const ChatProvider = ({ children }) => {
       message: message,
       text: message,
       image: imagePreviewUrl,
+      audio: audio ? 'sending' : '',
       createdAt: new Date().toISOString(),
       isSending: true,
       sender: user
@@ -386,6 +414,11 @@ const ChatProvider = ({ children }) => {
         formData.append('image', image);
       } else if (image && typeof image === 'string') {
         console.warn('Cannot upload image: Expected File/Blob but got string URL');
+      }
+      
+      if (audio && (audio instanceof File || audio instanceof Blob)) {
+        console.log('Attaching audio to form data');
+        formData.append('audio', audio, 'voice.mp3');
       }
       
       console.log('Sending message to:', `/messages/send/${currentUserId}`);

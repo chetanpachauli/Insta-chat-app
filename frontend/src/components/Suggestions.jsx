@@ -10,7 +10,7 @@ export default function Suggestions() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await axios.get('/api/profile/suggestions/all');
+        const res = await axios.get('/api/profile/suggestions/all', { withCredentials: true });
         setUsers(res.data || []);
       } catch (e) { /* ignore */ }
     })();
@@ -20,7 +20,7 @@ export default function Suggestions() {
 
   const handleFollow = async (userId) => {
     try {
-      await axios.post(`/api/profile/${userId}/follow`);
+      await axios.post(`/api/profile/${userId}/follow`, {}, { withCredentials: true });
       setUsers(p => p.filter(u => u._id !== userId));
     } catch (e) { /* ignore */ }
   };

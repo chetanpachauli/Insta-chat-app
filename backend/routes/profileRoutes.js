@@ -24,5 +24,7 @@ router.put('/',
 router.post('/:id/follow', protect, ctrl.followUser)
 router.post('/:id/unfollow', protect, ctrl.unfollowUser)
 router.get('/suggestions/all', protect, ctrl.getSuggestions)
+router.put('/privacy/toggle', protect, ctrl.togglePrivacy)
+router.post('/:id/close-friend', protect, ctrl.toggleCloseFriend)
 
 module.exports = router

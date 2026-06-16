@@ -13,6 +13,7 @@ router.get('/:postId', ctrl.getPost)
 router.post('/:postId/save', protect, ctrl.toggleSave)
 // router.get('/saved/me', protect, ctrl.getSaved)
 router.put('/:postId', protect, ctrl.updatePost)
+router.put('/:postId/archive', protect, ctrl.toggleArchive)
 router.delete('/:postId', protect, ctrl.deletePost)
 
 module.exports = router

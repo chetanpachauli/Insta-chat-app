@@ -22,7 +22,7 @@ module.exports = function protectRoute(req, res, next) {
     }
 
     // Attach user to request
-    req.user = { id: decoded.id };
+    req.user = { id: decoded.id, _id: decoded.id };
     next();
   } catch (err) {
     console.error('Authentication error:', err);

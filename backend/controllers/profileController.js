@@ -156,3 +156,29 @@ exports.getSuggestions = async (req, res) => {
     res.json(suggestions)
   } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
 }
+
+exports.togglePrivacy = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    user.isPrivate = !user.isPrivate
+    await user.save()
+    res.json({ isPrivate: user.isPrivate })
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
+}
+
+exports.toggleCloseFriend = async (req, res) => {
+  try {
+    const me = await User.findById(req.user.id);
+    if (!me) return res.status(404).json({ message: 'User not found' });
+    const { id } = req.params;
+    const idx = (me.closeFriends || []).findIndex(x => String(x) === String(id));
+    if (idx === -1) {
+      me.closeFriends.push(id);
+    } else {
+      me.closeFriends.splice(idx, 1);
+    }
+    await me.save();
+    res.json({ closeFriends: me.closeFriends, isCloseFriend: idx === -1 });
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }); }
+}

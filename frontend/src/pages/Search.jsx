@@ -130,7 +130,7 @@ export default function Search() {
             results.map(u => (
               <Link
                 key={u.id}
-                to={`/profile/${u.id}`}
+                to={`/profile/${u.username}`}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-dark-800/50 transition-colors"
               >
                 <Avatar user={u} size={44} />

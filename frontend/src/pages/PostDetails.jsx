@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import { HeartIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, BookmarkIcon, XMarkIcon, TrashIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { AuthContext } from '../context/AuthContext';
+import { useConfirm } from '../hooks/useConfirm';
+import ShareModal from '../components/ShareModal';
 
 const PostDetails = () => {
   const { postId } = useParams();
@@ -17,6 +19,8 @@ const PostDetails = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const confirmDel = useConfirm();
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -73,7 +77,7 @@ const PostDetails = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    if (!(await confirmDel('Are you sure you want to delete this post?'))) return;
     setIsDeleting(true);
     try {
       await axios.delete(`/api/posts/${postId}`, { withCredentials: true });
@@ -167,7 +171,7 @@ const PostDetails = () => {
               <button onClick={() => document.getElementById('commentInput')?.focus()} className="btn-icon">
                 <ChatBubbleLeftRightIcon className="w-6 h-6" />
               </button>
-              <button className="btn-icon"><PaperAirplaneIcon className="w-6 h-6" /></button>
+              <button onClick={() => setShareOpen(true)} className="btn-icon"><PaperAirplaneIcon className="w-6 h-6" /></button>
             </div>
             <button onClick={handleSave} className="btn-icon">
               {isSaved ? <BookmarkIconSolid className="w-6 h-6" /> : <BookmarkIcon className="w-6 h-6" />}
@@ -215,6 +219,7 @@ const PostDetails = () => {
           </form>
         </div>
       </div>
+      <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} post={post} />
     </div>
   );
 };

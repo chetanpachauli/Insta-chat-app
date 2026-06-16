@@ -16,6 +16,7 @@ exports.createPost = async (req, res) => {
       mediaType,
       caption: caption || '' 
     })
+    post.tags = Post.extractHashtags(caption || '')
     const saved = await post.save()
     // add to user's posts
     await User.findByIdAndUpdate(userId, { $push: { posts: saved._id } })
@@ -77,6 +78,20 @@ exports.addComment = async (req, res) => {
     res.status(201).json({ comment: last, postId: post._id })
   } catch (err) { res.status(500).json({ message: err.message || 'Server error' }) }
 }
+
+// Toggle post archive
+exports.toggleArchive = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    if (String(post.author) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    post.isArchived = !post.isArchived;
+    await post.save();
+    res.json({ isArchived: post.isArchived });
+  } catch (err) { res.status(500).json({ message: err.message || 'Server error' }); }
+};
 
 exports.getFeed = async (req, res) => {
   try {

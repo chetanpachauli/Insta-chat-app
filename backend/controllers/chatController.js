@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const Conversation = require('../models/Conversation');
 const { v2: cloudinary } = require('cloudinary');
 const multer = require('multer');
 
@@ -48,29 +49,47 @@ exports.sendMessage = async (req, res) => {
     }
 
     let imageUrl = '';
+    let audioUrl = '';
 
     // Handle image upload if exists
-    if (req.file) {
+    const imageFile = req.files?.image?.[0];
+    if (imageFile) {
       try {
         const result = await new Promise((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-              folder: 'chat-app',
-              resource_type: 'auto'
-            },
+            { folder: 'chat-app', resource_type: 'auto' },
             (error, result) => {
               if (error) reject(error);
               else resolve(result);
             }
           );
-          
-          uploadStream.end(req.file.buffer);
+          uploadStream.end(imageFile.buffer);
         });
-
         imageUrl = result.secure_url;
       } catch (uploadError) {
-        console.error('Cloudinary upload error:', uploadError);
+        console.error('Cloudinary image upload error:', uploadError);
         return res.status(500).json({ error: 'Failed to upload image' });
+      }
+    }
+
+    // Handle audio upload if exists
+    const audioFile = req.files?.audio?.[0];
+    if (audioFile) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: 'chat-app', resource_type: 'video' },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(audioFile.buffer);
+        });
+        audioUrl = result.secure_url;
+      } catch (uploadError) {
+        console.error('Cloudinary audio upload error:', uploadError);
+        return res.status(500).json({ error: 'Failed to upload audio' });
       }
     }
 
@@ -80,6 +99,7 @@ exports.sendMessage = async (req, res) => {
       receiverId,
       message: message || '',
       image: imageUrl,
+      audio: audioUrl,
       isSeen: false
     });
 
@@ -132,20 +152,24 @@ exports.getMessages = async (req, res) => {
   }
 };
 
-// Get users for sidebar
+// Get users for sidebar (includes group conversations)
 exports.getUsersForSidebar = async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    // Get all users except the current user
+
     const users = await User.find({ _id: { $ne: userId } })
       .select('-password')
       .lean();
 
-    res.json(users);
+    const groups = await Conversation.find({ participants: userId, isGroup: true })
+      .populate('participants', 'username profilePic')
+      .populate('lastMessage')
+      .lean();
+
+    res.json([...users, ...groups]);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Error fetching users' });
+    console.error('Error fetching sidebar data:', error);
+    res.status(500).json({ error: 'Error fetching sidebar data' });
   }
 };
 
@@ -184,6 +208,28 @@ exports.deleteMessage = async (req, res) => {
   } catch (error) {
     console.error('Error deleting message:', error);
     res.status(500).json({ error: 'Error deleting message' });
+  }
+};
+
+// Mark messages as seen
+exports.markSeen = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { otherId } = req.params;
+
+    await Message.updateMany(
+      { senderId: otherId, receiverId: userId, isSeen: false },
+      { $set: { isSeen: true } }
+    );
+
+    if (req.app.get('io')) {
+      const io = req.app.get('io');
+      io.to(otherId).emit('messageSeen', { seenBy: userId, chatId: otherId });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 

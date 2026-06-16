@@ -18,7 +18,7 @@ app.use(cookieParser());
 
 // Define allowed origins
 const allowedOrigins = [
-  process.env.FRONTEND_ORIGIN,
+  process.env.FRONTEND_URL,
   'https://insta-chat-app-five.vercel.app',
   'http://localhost:5173'
 ].filter(Boolean); // Remove any falsy values (like undefined if FRONTEND_ORIGIN is not set)
@@ -109,7 +109,7 @@ io.on('connection', (socket) => {
   // Handle new message
   socket.on('sendMessage', async (data) => {
     try {
-      const { senderId, receiverId, message, image } = data;
+      const { senderId, receiverId, message, image, audio } = data;
       
       // Save message to database (handled by API)
       // Just forward the message to the recipient
@@ -120,6 +120,7 @@ io.on('connection', (socket) => {
           receiverId,
           message,
           image,
+          audio: audio || '',
           createdAt: new Date()
         });
       }
@@ -132,6 +133,7 @@ io.on('connection', (socket) => {
           receiverId,
           message,
           image,
+          audio: audio || '',
           createdAt: new Date()
         });
       }
@@ -160,6 +162,14 @@ io.on('connection', (socket) => {
     const receiverSocketId = userSocketMap[receiverId];
     if (receiverSocketId) {
       io.to(receiverSocketId).emit('messageDeleted', { messageId, senderId });
+    }
+  });
+
+  // Handle mark seen
+  socket.on('markSeen', ({ userId, otherId }) => {
+    const otherSocketId = userSocketMap[otherId];
+    if (otherSocketId) {
+      io.to(otherSocketId).emit('messageSeen', { seenBy: userId, chatId: otherId });
     }
   });
 
@@ -220,10 +230,7 @@ setInterval(() => {
 const socketManager = require('./socket');
 socketManager.initSocket(io);
 
-// basic connection logging
-io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-});
+
 
 // Mount API routes
 try { app.use('/api/auth', require('./routes/authRoutes')); } catch (e) { console.warn('Auth routes not mounted:', e.message); }

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
+import { useConfirm } from '../hooks/useConfirm';
 import { 
   UserCircleIcon, 
   HomeIcon,
@@ -17,12 +18,12 @@ import {
   UserMinusIcon,
   PhotoIcon,
   ArrowRightOnRectangleIcon,
-  TrashIcon
+  TrashIcon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid, PlusIcon } from '@heroicons/react/24/solid';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useRef } from 'react';
-import { uploadImageToCloudinary } from '../utils/cloudinary';
 import api from '../utils/axiosConfig';
 
 // Follow Button Component with improved UX
@@ -50,16 +51,10 @@ const FollowButton = ({ profile, onUpdate, setProfile }) => {
     try {
       if (isFollowing) {
         console.log('Unfollowing user:', profile._id);
-        await axios.post(`http://localhost:5000/api/profile/${profile._id}/unfollow`, {}, {
-          withCredentials: true
-        });
-        console.log('Successfully unfollowed user');
+        await api.post(`/profile/${profile._id}/unfollow`);
         toast.success(`Unfollowed ${profile.username}`);
       } else {
-        console.log('Following user:', profile._id);
-        await axios.post(`http://localhost:5000/api/profile/${profile._id}/follow`, {}, {
-          withCredentials: true
-        });
+        await api.post(`/profile/${profile._id}/follow`);
         console.log('Successfully followed user');
         toast.success(`Followed ${profile.username}`);
       }
@@ -127,9 +122,11 @@ const PostGridItem = ({ post, onClick, isOwnProfile = false, onDelete }) => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const confirmDel = useConfirm();
+
   const handleDelete = async (e) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    if (!(await confirmDel('Are you sure you want to delete this post?'))) return;
     
     setIsDeleting(true);
     try {
@@ -236,8 +233,10 @@ const PostGridItem = ({ post, onClick, isOwnProfile = false, onDelete }) => {
 
 // Edit Profile Modal Component
 const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
+  const [name, setName] = useState(user?.name || '');
   const [username, setUsername] = useState(user?.username || '');
   const [bio, setBio] = useState(user?.bio || '');
+  const [website, setWebsite] = useState(user?.website || '');
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(user?.photo || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -257,9 +256,11 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
     
     try {
       await onSave({
+        name,
         username,
         bio,
-        photo: photo, // Send the file object directly
+        website,
+        photo: photo,
       });
       
       onClose();
@@ -331,6 +332,20 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
 
                     <div className="space-y-4">
                       <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-dark-300 mb-1">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="input-field"
+                          placeholder="Enter your display name"
+                        />
+                      </div>
+
+                      <div>
                         <label htmlFor="username" className="block text-sm font-medium text-dark-300 mb-1">
                           Username
                         </label>
@@ -341,6 +356,20 @@ const EditProfileModal = ({ isOpen, onClose, user, onSave }) => {
                           onChange={(e) => setUsername(e.target.value)}
                           className="input-field"
                           placeholder="Enter your username"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="website" className="block text-sm font-medium text-dark-300 mb-1">
+                          Website
+                        </label>
+                        <input
+                          type="url"
+                          id="website"
+                          value={website}
+                          onChange={(e) => setWebsite(e.target.value)}
+                          className="input-field"
+                          placeholder="Enter your website URL"
                         />
                       </div>
 
@@ -417,6 +446,8 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('posts');
   const [editing, setEditing] = useState(false);
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [savedPostsLoading, setSavedPostsLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
     bio: '',
@@ -427,6 +458,16 @@ const Profile = () => {
   console.log('Profile params:', { username, me });
   
   const isOwnProfile = !username || username === me?.username;
+
+  // Fetch saved posts when tab changes to saved
+  useEffect(() => {
+    if (tab !== 'saved') return;
+    setSavedPostsLoading(true);
+    axios.get('/api/posts/saved/me', { withCredentials: true })
+      .then(res => setSavedPosts(res.data || []))
+      .catch(() => setSavedPosts([]))
+      .finally(() => setSavedPostsLoading(false));
+  }, [tab]);
 
   // Handle post click
   const handlePostClick = (postId) => {
@@ -457,7 +498,9 @@ const Profile = () => {
       const formData = new FormData();
       
       // Append text fields
-      if (updatedProfile.username) formData.append('name', updatedProfile.username);
+      if (updatedProfile.name) formData.append('name', updatedProfile.name);
+      if (updatedProfile.username) formData.append('username', updatedProfile.username);
+      if (updatedProfile.website) formData.append('website', updatedProfile.website);
       if (updatedProfile.bio !== undefined) formData.append('bio', updatedProfile.bio);
       
       // Handle file upload if a new photo was selected
@@ -512,23 +555,28 @@ const Profile = () => {
   };
 
   // Handle delete account
+  const confirmAcc = useConfirm();
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   const handleDeleteAccount = async () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      try {
-        await api.delete('/auth/delete-account');
-        toast.success('Account deleted successfully');
-        logout();
-        navigate('/login');
-      } catch (error) {
-        console.error('Error deleting account:', error);
-        toast.error(error.response?.data?.message || 'Failed to delete account');
-      }
+    if (deletingAccount) return;
+    if (!(await confirmAcc('This action cannot be undone. All your data will be permanently deleted.', 'Delete Account?'))) return;
+    setDeletingAccount(true);
+    try {
+      await api.delete('/auth/delete-account');
+      toast.success('Account deleted successfully');
+      logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete account');
+      setDeletingAccount(false);
     }
   };
 
   // Handle settings
   const handleSettings = () => {
-    navigate('/accounts/settings/');
+    navigate('/settings');
   };
 
   useEffect(() => {
@@ -697,9 +745,16 @@ const Profile = () => {
                   Edit Profile
                 </button>
               ) : (
-                <button className="btn-primary text-sm py-1.5">
-                  Follow
-                </button>
+                <FollowButton
+                  profile={profile}
+                  onUpdate={(updatedProfile) => setProfile(prev => ({
+                    ...prev,
+                    ...updatedProfile,
+                    followers: updatedProfile.followers || prev.followers,
+                    following: updatedProfile.following || prev.following
+                  }))}
+                  setProfile={setProfile}
+                />
               )}
             </div>
           </div>
@@ -728,6 +783,17 @@ const Profile = () => {
               <BookmarkIcon className="w-4 h-4" />
               <span className="text-xs font-medium">SAVED</span>
             </button>
+            {isOwnProfile && (
+              <button
+                className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
+                  tab === 'archived' ? 'text-white border-t-2 border-brand-500' : 'text-dark-400 hover:text-dark-200'
+                }`}
+                onClick={() => setTab('archived')}
+              >
+                <ArchiveBoxIcon className="w-4 h-4" />
+                <span className="text-xs font-medium">ARCHIVED</span>
+              </button>
+            )}
             <button
               className={`flex-1 py-3 flex items-center justify-center gap-1.5 transition-colors ${
                 tab === 'tagged' ? 'text-white border-t-2 border-brand-500' : 'text-dark-400 hover:text-dark-200'
@@ -768,12 +834,49 @@ const Profile = () => {
             )}
 
             {tab === 'saved' && (
-              <div className="py-16 text-center">
-                <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mx-auto mb-4">
-                  <BookmarkIcon className="w-8 h-8 text-dark-400" />
+              savedPostsLoading ? (
+                <div className="flex justify-center py-16">
+                  <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                 </div>
-                <h3 className="text-lg font-bold mb-1">Saved</h3>
-                <p className="text-dark-400 text-sm max-w-xs mx-auto">Save photos and videos that you want to see again.</p>
+              ) : savedPosts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 p-1">
+                  {savedPosts.map(post => (
+                    <PostGridItem key={post._id} post={post} onClick={() => handlePostClick(post._id)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="py-16 text-center">
+                  <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mx-auto mb-4">
+                    <BookmarkIcon className="w-8 h-8 text-dark-400" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">Saved</h3>
+                  <p className="text-dark-400 text-sm max-w-xs mx-auto">Save photos and videos that you want to see again.</p>
+                </div>
+              )
+            )}
+
+            {tab === 'archived' && (
+              <div className="grid grid-cols-3 gap-1 p-1">
+                {profile?.posts?.filter(p => p.isArchived)?.length > 0 ? (
+                  profile.posts.filter(p => p.isArchived).map((post) => (
+                    <div key={post._id} className="aspect-square overflow-hidden rounded-lg">
+                      <PostGridItem
+                        post={post}
+                        onClick={() => handlePostClick(post._id)}
+                        isOwnProfile={true}
+                        onDelete={() => {}}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-3 flex flex-col items-center justify-center py-12 text-center">
+                    <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mb-4">
+                      <ArchiveBoxIcon className="w-8 h-8 text-dark-400" />
+                    </div>
+                    <h3 className="text-lg font-bold mb-1">No Archived Posts</h3>
+                    <p className="text-dark-400 text-sm max-w-md">Archive your posts to hide them from your profile.</p>
+                  </div>
+                )}
               </div>
             )}
 

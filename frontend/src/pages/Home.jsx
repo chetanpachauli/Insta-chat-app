@@ -48,7 +48,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  const userForStories = user?._id ? user : null;
+  const userForStories = (user?.id || user?._id) ? user : null;
 
   if (isLoading) {
     return (
