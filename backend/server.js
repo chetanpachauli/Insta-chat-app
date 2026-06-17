@@ -244,6 +244,7 @@ try { app.use('/api/conversations', require('./routes/conversationRoutes')); } c
 try { app.use('/api/push', require('./routes/pushRoutes')); } catch (e) { console.warn('Push routes not mounted:', e.message); }
 
 // Healthcheck
+app.get('/', (req, res) => res.send('MERN chat backend is running'));
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
 // 404 handler
@@ -256,7 +257,5 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status || 500).json({ message: err.message || 'Internal Server Error' });
 });
-
-app.get('/', (req, res) => res.send('MERN chat backend is running'));
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
