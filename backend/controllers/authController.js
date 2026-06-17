@@ -226,3 +226,69 @@ exports.refreshToken = async (req, res) => {
     res.status(500).json({ message: 'Server error during token refresh' });
   }
 };
+
+// Google OAuth login
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ message: 'Google credential required' });
+
+    const { OAuth2Client } = require('google-auth-library');
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+
+    const { email, name, picture, sub } = payload;
+    if (!email) return res.status(400).json({ message: 'Google account has no email' });
+
+    let user = await User.findOne({ $or: [{ googleId: sub }, { email }] });
+
+    if (!user) {
+      const baseUsername = (email.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '');
+      let username = baseUsername;
+      let suffix = 1;
+      while (await User.findOne({ username })) {
+        username = `${baseUsername}${suffix}`;
+        suffix++;
+      }
+      user = new User({
+        username,
+        email,
+        name: name || '',
+        profilePic: picture || '',
+        googleId: sub,
+        password: ''
+      });
+      await user.save();
+    } else if (!user.googleId) {
+      user.googleId = sub;
+      if (!user.profilePic && picture) user.profilePic = picture;
+      if (!user.name && name) user.name = name;
+      await user.save();
+    }
+
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    const hashedRefresh = await bcrypt.hash(refreshToken, 10);
+    user.refreshTokens.push(hashedRefresh);
+    await user.save();
+
+    res.cookie('accessToken', accessToken, { httpOnly: true, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
+
+    res.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profilePic: user.profilePic,
+        bio: user.bio,
+        name: user.name
+      },
+      accessToken,
+      refreshToken
+    });
+  } catch (err) {
+    console.error('Google login error:', err);
+    res.status(500).json({ message: 'Google login failed' });
+  }
+};

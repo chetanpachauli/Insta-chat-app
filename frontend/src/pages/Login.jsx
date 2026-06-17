@@ -1,12 +1,13 @@
 import { useState, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
+import { GoogleLogin } from '@react-oauth/google'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useContext(AuthContext)
+  const { login, googleLogin } = useContext(AuthContext)
   const navigate = useNavigate()
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -89,6 +90,26 @@ export default function Login() {
                 ) : 'Log in'}
               </button>
             </form>
+
+            {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+              <div className="mt-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="flex-1 h-px bg-dark-600" />
+                  <span className="text-dark-400 text-xs">or</span>
+                  <span className="flex-1 h-px bg-dark-600" />
+                </div>
+                <GoogleLogin
+                  onSuccess={async ({ credential }) => {
+                    const result = await googleLogin(credential)
+                    if (!result.success) setError(result.error || 'Google login failed')
+                  }}
+                  onError={() => setError('Google login failed')}
+                  theme="filled_black"
+                  size="large"
+                  text="signin_with"
+                />
+              </div>
+            )}
 
             <div className="text-sm text-center text-dark-400 mt-6">
               Don't have an account?{' '}

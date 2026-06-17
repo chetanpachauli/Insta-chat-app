@@ -187,7 +187,18 @@ const signup = useCallback(async (userData) => {
     window.location.href = '/login';
   }, []);
 
-  const value = { user, isCheckingAuth, login,signup, logout, setSession, checkAuth };
+  const googleLogin = useCallback(async (credential) => {
+    try {
+      const res = await axios.post('/api/auth/google', { credential });
+      setSession({ user: res.data.user, accessToken: res.data.accessToken, refreshToken: res.data.refreshToken });
+      navigate('/');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.message || 'Google login failed' };
+    }
+  }, [navigate, setSession]);
+
+  const value = { user, isCheckingAuth, login, signup, googleLogin, logout, setSession, checkAuth };
 
   return (
     <AuthContext.Provider value={value}>

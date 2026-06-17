@@ -21,6 +21,9 @@ router.get('/search', authCtrl.search);
 // POST /api/auth/refresh-token
 router.post('/refresh-token', authCtrl.refreshToken);
 
+// POST /api/auth/google
+router.post('/google', authCtrl.googleLogin);
+
 // DELETE /api/auth/delete-account
 router.delete('/delete-account', protect, authCtrl.deleteAccount);
 

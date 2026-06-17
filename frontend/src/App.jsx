@@ -1,5 +1,6 @@
 import React, { useContext, Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import AuthProvider, { AuthContext, useAuth } from './context/AuthContext';
 import ChatProvider from './context/ChatContext';
 import { Toaster } from 'react-hot-toast';
@@ -92,7 +93,9 @@ function AppRoutes() {
 }
 
 function AppWithProviders() {
-  return (
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const content = (
     <AuthProvider>
       <ChatProvider>
         <ConfirmProvider>
@@ -112,6 +115,12 @@ function AppWithProviders() {
       </ChatProvider>
     </AuthProvider>
   );
+
+  return googleClientId ? (
+    <GoogleOAuthProvider clientId={googleClientId}>
+      {content}
+    </GoogleOAuthProvider>
+  ) : content;
 }
 
 export default AppWithProviders;
