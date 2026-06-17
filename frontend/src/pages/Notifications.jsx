@@ -109,6 +109,7 @@ export default function Notifications() {
                         src={notification.from?.profilePic || '/default-avatar.png'}
                         alt={notification.from?.username || 'User'}
                         className="w-10 h-10 rounded-full object-cover"
+                        loading="lazy"
                       />
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-dark-900 flex items-center justify-center">
                         <div className="w-4 h-4 rounded-full bg-dark-700 flex items-center justify-center">
@@ -126,7 +127,7 @@ export default function Notifications() {
                       </p>
                     </div>
                     {notification.post?.image && (
-                      <img src={notification.post.image} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" />
+                      <img src={notification.post.image} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" loading="lazy" />
                     )}
                   </div>
                 ))}

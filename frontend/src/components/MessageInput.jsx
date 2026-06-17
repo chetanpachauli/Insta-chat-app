@@ -154,18 +154,6 @@ const MessageInput = memo(function MessageInput() {
   }, [selectedId, handleTyping, handleStopTyping, isGroup]);
 
   useEffect(() => {
-    if (!selectedId) return;
-    if (text.trim()) {
-      handleTyping(selectedId, isGroup);
-      if (typingTimer.current) clearTimeout(typingTimer.current);
-      typingTimer.current = setTimeout(() => handleStopTyping(selectedId, isGroup), 2000);
-    } else {
-      handleStopTyping(selectedId, isGroup);
-    }
-    return () => { if (typingTimer.current) clearTimeout(typingTimer.current); };
-  }, [text, selectedId, handleTyping, handleStopTyping, isGroup]);
-
-  useEffect(() => {
     return () => {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {

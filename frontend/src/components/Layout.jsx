@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   HomeIcon as HomeOutline,
@@ -71,6 +71,13 @@ export default function Layout({ children }) {
     }
     return items;
   }, [user?.username]);
+
+  const getItemByPath = useCallback((path) => {
+    return navItems.find(i => i.path === path);
+  }, [navItems]);
+
+  const mobileBottomOrder = ['/', '/reels', '/messages', '/explore', `/profile/${user?.username}`];
+  const mobileTopPaths = ['/create', '/messages', '/notifications'];
 
   const hideLayout = location.pathname === '/login' || location.pathname === '/signup';
 
@@ -146,6 +153,36 @@ export default function Layout({ children }) {
 
       {/* Main Content */}
       <div className={`flex-1 flex flex-col min-h-screen ${!isMobile ? 'ml-72' : ''}`}>
+        {/* Mobile Top Bar */}
+        {isMobile && (
+          <div className={`flex items-center justify-between px-4 py-3 border-b z-40 ${
+            theme === 'light' ? 'bg-white border-gray-200' : 'bg-dark-900 border-dark-700/50'
+          }`}>
+            <h1 className="text-xl font-bold bg-gradient-brand bg-clip-text text-transparent">
+              Instagram
+            </h1>
+            <div className="flex items-center gap-2">
+              {mobileTopPaths.map(path => {
+                const item = getItemByPath(path);
+                if (!item) return null;
+                const active = isActive(item.paths);
+                const Icon = item.icon(active);
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={`p-2 rounded-xl transition-all duration-200 ${
+                      active ? 'text-brand-400' : theme === 'light' ? 'text-gray-500' : 'text-dark-300'
+                    }`}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <main className="flex-1">
           {children}
         </main>
@@ -156,7 +193,9 @@ export default function Layout({ children }) {
             theme === 'light' ? 'bg-white/95 border-gray-200' : 'bg-dark-900/95 border-dark-700/50'
           }`}>
             <div className="flex items-center justify-around py-2 px-2">
-              {navItems.slice(0, 5).map((item) => {
+              {mobileBottomOrder.map(path => {
+                const item = getItemByPath(path);
+                if (!item) return null;
                 const active = isActive(item.paths);
                 const Icon = item.icon(active);
                 return (
@@ -171,15 +210,6 @@ export default function Layout({ children }) {
                   </NavLink>
                 );
               })}
-              <button
-                onClick={() => { logout(); navigate('/login'); }}
-                className={`p-3 rounded-xl transition-all duration-200 ${
-                  theme === 'light' ? 'text-gray-500 hover:text-red-500' : 'text-dark-400 hover:text-red-400'
-                }`}
-                title="Log out"
-              >
-                <ArrowRightOnRectangleIcon className="w-6 h-6" />
-              </button>
             </div>
           </nav>
         )}

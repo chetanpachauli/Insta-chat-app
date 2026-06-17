@@ -116,12 +116,18 @@ function AuthProvider({ children }) {
     let isMounted = true;
     
     const verify = async () => {
-      const result = await checkAuth();
-      if (!isMounted) return;
-
       const path = location.pathname;
       const isAuthPage = path === '/login' || path === '/signup';
-      
+
+      // Skip auth check on login/signup pages
+      let result;
+      if (isAuthPage) {
+        result = { isAuthenticated: false, user: null };
+      } else {
+        result = await checkAuth();
+      }
+      if (!isMounted) return;
+
       // In paths par redirection nahi hoga (Public/Static access)
       const allowedPaths = ['/', '/explore', '/reels', '/search', '/create', '/notifications', '/messages'];
       const isProfilePath = path.startsWith('/profile/') || path.startsWith('/p/'); // For single posts

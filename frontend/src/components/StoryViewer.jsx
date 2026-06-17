@@ -130,6 +130,7 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
               src={currentGroup?.user?.profilePic || '/default-avatar.png'}
               className="w-8 h-8 rounded-full border border-white/30"
               alt=""
+              loading="lazy"
             />
             <span className="text-sm font-semibold text-white">{currentGroup?.user?.username}</span>
             <span className="text-xs text-white/60">
@@ -177,6 +178,7 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
           src={currentStory.image}
           className="w-full h-full object-contain"
           alt="story"
+          loading="lazy"
         />
 
         {/* Views modal */}
@@ -190,7 +192,7 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
             ) : (
               viewers.map(v => (
                 <div key={v._id} className="flex items-center gap-2 p-2 hover:bg-dark-700/50">
-                  <img src={v.profilePic || '/default-avatar.png'} className="w-7 h-7 rounded-full object-cover" alt="" />
+                  <img src={v.profilePic || '/default-avatar.png'} className="w-7 h-7 rounded-full object-cover" alt="" loading="lazy" />
                   <span className="text-sm">{v.username}</span>
                 </div>
               ))

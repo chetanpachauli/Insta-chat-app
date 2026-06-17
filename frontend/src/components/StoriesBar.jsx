@@ -126,6 +126,7 @@ export default function StoriesBar({ currentUser, onStoryCreated }) {
                     src={group.user?.profilePic || '/default-avatar.png'}
                     className="w-full h-full rounded-full object-cover border-2 border-dark-900"
                     alt=""
+                    loading="lazy"
                   />
                 </div>
                 <span className="text-[10px] text-dark-300 truncate max-w-[60px]">

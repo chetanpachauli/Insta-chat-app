@@ -120,7 +120,7 @@ export default function ShareModal({ isOpen, onClose, post }) {
 
                   {post?.image && (
                   <div className="mb-4 flex items-center gap-3 p-2 rounded-xl bg-dark-700/50">
-                    <img src={post.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                    <img src={post.image} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate text-white">{post.caption || 'Untitled Post'}</p>
                       <p className="text-xs text-dark-400">by {typeof post.author === 'object' ? (post.author?.username || 'unknown') : 'user'}</p>
@@ -172,6 +172,7 @@ export default function ShareModal({ isOpen, onClose, post }) {
                           src={u.profilePic || '/default-avatar.png'}
                           alt=""
                           className="w-10 h-10 rounded-full object-cover shrink-0"
+                          loading="lazy"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-white truncate">{u.username}</p>

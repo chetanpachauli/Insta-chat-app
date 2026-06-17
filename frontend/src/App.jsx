@@ -1,7 +1,7 @@
-import React, { useContext, Suspense, lazy, useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import React, { useContext, Suspense, lazy } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import AuthProvider, { AuthContext, useAuth } from './context/AuthContext';
+import AuthProvider, { AuthContext } from './context/AuthContext';
 import ChatProvider from './context/ChatContext';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
@@ -38,22 +38,6 @@ function AppRoutes() {
   const auth = useContext(AuthContext);
   const user = auth?.user;
   const isCheckingAuth = auth?.isCheckingAuth;
-  const navigate = useNavigate();
-  const { checkAuth } = useAuth();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const initialize = async () => {
-      try {
-        await checkAuth();
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    initialize();
-  }, [checkAuth, navigate]);
 
   const ProtectedRoute = ({ children }) => {
     if (isCheckingAuth) return <LoadingSpinner />;
@@ -66,7 +50,7 @@ function AppRoutes() {
   };
 
   const PublicRoute = ({ children }) => {
-    if (isCheckingAuth || loading) return <LoadingSpinner />;
+    if (isCheckingAuth) return <LoadingSpinner />;
     if (user) return <Navigate to="/" replace />;
     return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
   };

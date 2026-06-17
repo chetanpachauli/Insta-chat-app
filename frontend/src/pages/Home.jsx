@@ -62,8 +62,8 @@ export default function Home() {
     <ErrorBoundary>
       <div className="min-h-screen bg-dark-900 text-white pb-20 md:pb-0">
         <div className="max-w-[500px] mx-auto min-h-screen">
-          {/* Header */}
-          <header className="sticky top-0 z-10 bg-dark-900/80 backdrop-blur-md border-b border-dark-700/50 p-4">
+          {/* Header - hidden on mobile (Layout has its own top bar) */}
+          <header className="sticky top-0 z-10 bg-dark-900/80 backdrop-blur-md border-b border-dark-700/50 p-4 hidden md:block">
             <div className="flex justify-between items-center">
               <h1 className="text-xl font-bold bg-gradient-brand bg-clip-text text-transparent">
                 Instagram

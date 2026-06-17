@@ -134,6 +134,7 @@ const PostDetails = () => {
               src={post?.author?.profilePic || '/default-avatar.png'}
               alt={post?.author?.username}
               className="w-8 h-8 rounded-full object-cover cursor-pointer"
+              loading="lazy"
               onClick={() => post?.author?.username && navigate(`/profile/${post.author.username}`)}
             />
             <span
@@ -157,7 +158,7 @@ const PostDetails = () => {
           {post.mediaType === 'video' ? (
             <video src={post.mediaUrl || post.video} className="w-full max-h-[80vh] object-contain" controls autoPlay loop muted playsInline crossOrigin="anonymous" />
           ) : (
-            <img src={post.mediaUrl || post.image} alt="Post" className="w-full max-h-[80vh] object-contain" crossOrigin="anonymous" />
+            <img src={post.mediaUrl || post.image} alt="Post" className="w-full max-h-[80vh] object-contain" loading="lazy" crossOrigin="anonymous" />
           )}
         </div>
 

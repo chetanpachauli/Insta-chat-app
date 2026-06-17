@@ -35,6 +35,7 @@ export default function Suggestions() {
               src={u.profilePic || '/default-avatar.png'}
               className="w-8 h-8 rounded-full object-cover cursor-pointer"
               alt=""
+              loading="lazy"
               onClick={() => navigate(`/profile/${u.username}`)}
             />
             <div className="flex-1 min-w-0">

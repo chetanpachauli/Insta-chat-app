@@ -8,7 +8,7 @@ import { useConfirm } from '../hooks/useConfirm'
 import Avatar from './Avatar'
 import ShareModal from './ShareModal'
 
-export default function PostCard({ post, onLikeChanged, onDeleted }) {
+function PostCard({ post, onLikeChanged, onDeleted }) {
   const { user } = useContext(AuthContext)
   const navigate = useNavigate()
   const [showMenu, setShowMenu] = useState(false)
@@ -139,6 +139,7 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
             src={post.image}
             alt={post.caption || 'Post'}
             className="max-h-[600px] w-full object-contain"
+            loading="lazy"
             crossOrigin="anonymous"
           />
         )}
@@ -221,3 +222,5 @@ export default function PostCard({ post, onLikeChanged, onDeleted }) {
     </div>
   )
 }
+
+export default React.memo(PostCard)
