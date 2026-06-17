@@ -29,10 +29,20 @@ cloudinary.config({
 // Send message with optional image
 exports.sendMessage = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, conversationId } = req.body;
     let { receiverId } = req.body;
     const senderId = req.params.userId;
-    
+
+    // For group messages, resolve receiverId from conversation
+    if (!receiverId || receiverId === 'undefined') {
+      if (conversationId) {
+        const conv = await Conversation.findById(conversationId);
+        if (conv && conv.isGroup) {
+          receiverId = conversationId;
+        }
+      }
+    }
+
     // Validate receiverId
     if (!receiverId || receiverId === 'undefined' || !mongoose.Types.ObjectId.isValid(receiverId)) {
       console.error('Invalid receiverId:', { receiverId, isValid: mongoose.Types.ObjectId.isValid(receiverId) });
@@ -100,10 +110,24 @@ exports.sendMessage = async (req, res) => {
       message: message || '',
       image: imageUrl,
       audio: audioUrl,
+      conversationId: conversationId || undefined,
       isSeen: false
     });
 
     await newMessage.save();
+
+    // Update lastMessage on conversation
+    if (conversationId) {
+      await Conversation.findByIdAndUpdate(conversationId, { lastMessage: newMessage._id });
+    } else {
+      const conv = await Conversation.findOne({
+        isGroup: false,
+        participants: { $all: [senderId, receiverId], $size: 2 }
+      });
+      if (conv) {
+        await Conversation.findByIdAndUpdate(conv._id, { lastMessage: newMessage._id });
+      }
+    }
 
     // Populate sender info
     const populatedMessage = await Message.findById(newMessage._id)
@@ -113,8 +137,15 @@ exports.sendMessage = async (req, res) => {
     // Emit socket event for real-time update
     if (req.app.get('io')) {
       const io = req.app.get('io');
-      io.to(receiverId).emit('newMessage', populatedMessage);
-      io.to(senderId).emit('newMessage', populatedMessage); // Also emit to sender
+      const isGroup = conversationId && mongoose.Types.ObjectId.isValid(conversationId) &&
+        await Conversation.exists({ _id: conversationId, isGroup: true });
+
+      if (isGroup) {
+        io.to(conversationId).emit('newGroupMessage', populatedMessage);
+      } else {
+        io.to(receiverId).emit('newMessage', populatedMessage);
+        io.to(senderId).emit('newMessage', populatedMessage);
+      }
     }
 
     res.status(201).json({
@@ -130,20 +161,33 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
-// Get messages between two users
+// Get messages between two users or by conversationId
 exports.getMessages = async (req, res) => {
   try {
     const { userId, otherId } = req.params;
-    
-    const messages = await Message.find({
-      $or: [
-        { senderId: userId, receiverId: otherId },
-        { senderId: otherId, receiverId: userId }
-      ]
-    })
-    .sort({ createdAt: 1 })
-    .populate('senderId', 'username profilePic')
-    .populate('receiverId', 'username profilePic');
+
+    // Check if otherId is a group conversation
+    const isGroup = mongoose.Types.ObjectId.isValid(otherId) &&
+      await Conversation.exists({ _id: otherId, isGroup: true });
+
+    let messages;
+    if (isGroup) {
+      messages = await Message.find({ conversationId: otherId })
+        .sort({ createdAt: 1 })
+        .populate('senderId', 'username profilePic')
+        .populate('receiverId', 'username profilePic');
+    } else {
+      messages = await Message.find({
+        conversationId: { $exists: false },
+        $or: [
+          { senderId: userId, receiverId: otherId },
+          { senderId: otherId, receiverId: userId }
+        ]
+      })
+      .sort({ createdAt: 1 })
+      .populate('senderId', 'username profilePic')
+      .populate('receiverId', 'username profilePic');
+    }
 
     res.json(messages || []);
   } catch (error) {

@@ -136,10 +136,14 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
               const currentUserId = user?._id || user?.id;
               const isMe = String(senderId) === String(currentUserId);
               const messageKey = m._id || `msg-${m.createdAt || Date.now()}`;
+              const senderName = m.senderId?.username || 'Unknown';
 
               return (
                 <div key={messageKey} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                   <div className={`group relative max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
+                    {!isMe && selectedChat?.isGroup && (
+                      <p className="text-[11px] text-dark-400 mb-1 ml-1">{senderName}</p>
+                    )}
                     {m.image && (
                       <div className={`mb-1.5 rounded-xl overflow-hidden ${isMe ? 'ml-auto' : ''}`}>
                         <img
@@ -185,7 +189,7 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
                       </button>
                     )}
 
-                    {isMe && m.isSeen && (
+                    {isMe && !selectedChat?.isGroup && m.isSeen && (
                       <div className="text-[10px] text-dark-400 mt-1 text-right">Seen</div>
                     )}
                   </div>
@@ -195,9 +199,11 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
           </div>
 
           {/* Typing indicator */}
-          {selectedChat?._id && typingUsers[selectedChat._id] && (
+          {selectedChat?._id && (typingUsers[selectedChat._id] || []).length > 0 && (
             <div className="px-4 py-2 text-xs text-dark-400 animate-pulse-soft">
-              {selectedChat.username} is typing...
+              {selectedChat.isGroup
+                ? `${(typingUsers[selectedChat._id] || []).length} user(s) typing...`
+                : `${selectedChat.username} is typing...`}
             </div>
           )}
 

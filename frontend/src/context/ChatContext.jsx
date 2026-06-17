@@ -123,6 +123,35 @@ const ChatProvider = ({ children }) => {
     });
   }, []);
 
+  const handleGroupMessage = useCallback((message) => {
+    const chatId = String(message.conversationId || message.receiverId);
+    if (!chatId) return;
+
+    setMessages(prev => {
+      const existingMessageIndex = (prev[chatId] || []).findIndex(
+        msg => msg._id === message._id ||
+          (msg._id && msg._id.startsWith('temp-') &&
+            msg.senderId === message.senderId &&
+            msg.createdAt === message.createdAt)
+      );
+
+      if (existingMessageIndex >= 0) {
+        const updatedMessages = [...(prev[chatId] || [])];
+        updatedMessages[existingMessageIndex] = {
+          ...updatedMessages[existingMessageIndex],
+          ...message,
+          image: message.image || updatedMessages[existingMessageIndex].image
+        };
+        return { ...prev, [chatId]: updatedMessages };
+      } else {
+        return {
+          ...prev,
+          [chatId]: [...(prev[chatId] || []), message]
+        };
+      }
+    });
+  }, []);
+
   const handleTyping = useCallback(({ chatId, userId }) => {
     setTypingUsers(prev => ({
       ...prev,
@@ -227,6 +256,19 @@ const ChatProvider = ({ children }) => {
       { event: 'connect_error', handler: handleConnectError },
       { event: 'disconnect', handler: handleDisconnect },
       { event: 'newMessage', handler: handleMessage },
+      { event: 'newGroupMessage', handler: handleGroupMessage },
+      { event: 'groupTyping', handler: ({ from, conversationId }) => {
+        setTypingUsers(prev => ({
+          ...prev,
+          [conversationId]: [...(prev[conversationId] || []).filter(id => id !== from), from]
+        }));
+      }},
+      { event: 'groupStopTyping', handler: ({ from, conversationId }) => {
+        setTypingUsers(prev => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || []).filter(id => id !== from)
+        }));
+      }},
       { event: 'messageSeen', handler: ({ seenBy, chatId }) => {
         setMessages(prev => {
           const key = chatId || seenBy;
@@ -325,6 +367,26 @@ const ChatProvider = ({ children }) => {
     return () => clearTimeout(timeout);
   }, [selectedChat?._id, selectedChat?.id]);
 
+  // Join/leave Socket.io room when selecting a group chat
+  useEffect(() => {
+    const chatId = selectedChat?._id || selectedChat?.id;
+    const isGroup = selectedChat?.isGroup;
+    const socket = socketRef.current;
+
+    if (!chatId || !socket?.connected) return;
+
+    // Join previous group room on reconnect
+    if (isGroup) {
+      socket.emit('joinConversation', chatId);
+    }
+
+    return () => {
+      if (isGroup && socket?.connected) {
+        socket.emit('leaveConversation', chatId);
+      }
+    };
+  }, [selectedChat?._id, selectedChat?.id, selectedChat?.isGroup]);
+
   const fetchMessages = useCallback(async (otherUserId) => {
     const currentUserId = userIdRef.current;
     console.log("Context: fetchMessages called with Sender:", currentUserId, "and Receiver:", otherUserId);
@@ -365,7 +427,7 @@ const ChatProvider = ({ children }) => {
     }
   }, []); // stable — no state deps to avoid infinite loops
 
-  const sendMessage = useCallback(async ({ receiverId, message, image = null, audio = null }) => {
+  const sendMessage = useCallback(async ({ receiverId, message, image = null, audio = null, conversationId = null }) => {
     const chatId = receiverId;
     const currentUserId = userIdRef.current;
 
@@ -408,6 +470,7 @@ const ChatProvider = ({ children }) => {
       const formData = new FormData();
       if (message) formData.append('message', message);
       formData.append('receiverId', receiverId);
+      if (conversationId) formData.append('conversationId', conversationId);
       
       if (image && (image instanceof File || image instanceof Blob)) {
         console.log('Attaching image to form data');
@@ -461,7 +524,14 @@ const ChatProvider = ({ children }) => {
           sender: user,
           image: response.data.image || response.data.imageUrl || null
         };
-        socketRef.current.emit('sendMessage', messageToEmit);
+        if (conversationId) {
+          socketRef.current.emit('sendGroupMessage', {
+            ...messageToEmit,
+            conversationId
+          });
+        } else {
+          socketRef.current.emit('sendMessage', messageToEmit);
+        }
       }
       
       return response.data;
@@ -479,21 +549,23 @@ const ChatProvider = ({ children }) => {
     }
   }, [user]);
 
-  const startTyping = useCallback((chatId) => {
+  const startTyping = useCallback((chatId, isGroup = false) => {
     if (socketRef.current?.connected && userIdRef.current) {
-      socketRef.current.emit('typing', { 
-        chatId, 
-        userId: userIdRef.current 
-      });
+      if (isGroup) {
+        socketRef.current.emit('groupTyping', { conversationId: chatId, from: userIdRef.current });
+      } else {
+        socketRef.current.emit('typing', { chatId, userId: userIdRef.current });
+      }
     }
   }, []);
 
-  const stopTyping = useCallback((chatId) => {
+  const stopTyping = useCallback((chatId, isGroup = false) => {
     if (socketRef.current?.connected && userIdRef.current) {
-      socketRef.current.emit('stopTyping', { 
-        chatId, 
-        userId: userIdRef.current 
-      });
+      if (isGroup) {
+        socketRef.current.emit('groupStopTyping', { conversationId: chatId, from: userIdRef.current });
+      } else {
+        socketRef.current.emit('stopTyping', { chatId, userId: userIdRef.current });
+      }
     }
   }, []);
 

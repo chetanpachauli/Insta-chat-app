@@ -20,6 +20,8 @@ const MessageInput = memo(function MessageInput() {
   } = chat;
 
   const selectedId = selectedChat?._id || selectedChat?.id;
+  const isGroup = selectedChat?.isGroup;
+  const conversationId = isGroup ? selectedId : null;
   const { user } = auth;
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -47,14 +49,14 @@ const MessageInput = memo(function MessageInput() {
     if (!messageText && !uploading) return;
 
     try {
-      await sendMessage({ receiverId: selectedId, message: messageText, image: null });
+      await sendMessage({ receiverId: selectedId, message: messageText, image: null, conversationId });
       setText('');
-      handleStopTyping(selectedId);
+      handleStopTyping(selectedId, isGroup);
     } catch (err) {
       console.error('Failed to send message:', err);
       chat.setError?.('Failed to send message. Please try again.');
     }
-  }, [selectedId, text, sendMessage, handleStopTyping, uploading, chat]);
+  }, [selectedId, text, sendMessage, handleStopTyping, uploading, chat, conversationId, isGroup]);
 
   const onPick = useCallback((emojiData) => {
     setText(t => t + emojiData.emoji);
@@ -65,7 +67,7 @@ const MessageInput = memo(function MessageInput() {
     if (!file || !selectedId) return;
     try {
       setUploading(true);
-      await sendMessage({ receiverId: selectedId, message: text || '', image: file });
+      await sendMessage({ receiverId: selectedId, message: text || '', image: file, conversationId });
       setText('');
     } catch (error) {
       console.error('Error sending image:', error);
@@ -111,7 +113,8 @@ const MessageInput = memo(function MessageInput() {
               receiverId: selectedId,
               message: '',
               image: null,
-              audio: audioBlob
+              audio: audioBlob,
+              conversationId
             });
           } catch (err) {
             console.error('Error sending voice message:', err);
@@ -145,22 +148,22 @@ const MessageInput = memo(function MessageInput() {
     const v = e.target.value;
     setText(v);
     if (!selectedId) return;
-    handleTyping(selectedId);
+    handleTyping(selectedId, isGroup);
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => handleStopTyping(selectedId), 2000);
-  }, [selectedId, handleTyping, handleStopTyping]);
+    typingTimer.current = setTimeout(() => handleStopTyping(selectedId, isGroup), 2000);
+  }, [selectedId, handleTyping, handleStopTyping, isGroup]);
 
   useEffect(() => {
     if (!selectedId) return;
     if (text.trim()) {
-      handleTyping(selectedId);
+      handleTyping(selectedId, isGroup);
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      typingTimer.current = setTimeout(() => handleStopTyping(selectedId), 2000);
+      typingTimer.current = setTimeout(() => handleStopTyping(selectedId, isGroup), 2000);
     } else {
-      handleStopTyping(selectedId);
+      handleStopTyping(selectedId, isGroup);
     }
     return () => { if (typingTimer.current) clearTimeout(typingTimer.current); };
-  }, [text, selectedId, handleTyping, handleStopTyping]);
+  }, [text, selectedId, handleTyping, handleStopTyping, isGroup]);
 
   useEffect(() => {
     return () => {
