@@ -171,6 +171,15 @@ export default function Layout({ children }) {
                   </NavLink>
                 );
               })}
+              <button
+                onClick={() => { logout(); navigate('/login'); }}
+                className={`p-3 rounded-xl transition-all duration-200 ${
+                  theme === 'light' ? 'text-gray-500 hover:text-red-500' : 'text-dark-400 hover:text-red-400'
+                }`}
+                title="Log out"
+              >
+                <ArrowRightOnRectangleIcon className="w-6 h-6" />
+              </button>
             </div>
           </nav>
         )}
