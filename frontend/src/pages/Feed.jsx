@@ -12,12 +12,27 @@ export default function Feed() {
   const fetchPosts = useCallback(async (pageNum) => {
     setLoading(true)
     try {
+      if (pageNum === 1) {
+        try {
+          const cached = sessionStorage.getItem('feed_cache')
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setPosts(parsed)
+              setLoading(false)
+            }
+          }
+        } catch { /* ignore */ }
+      }
       const [res, me] = await Promise.all([
         axios.get(`/api/posts/feed?page=${pageNum}&limit=10`),
         axios.get('/api/profile/me')
       ])
       const saved = (me.data.savedPosts || []).map(x => String(x._id || x))
       const newPosts = (res.data.posts || []).map(p => ({ ...p, _saved: saved.includes(String(p._id)) }))
+      if (pageNum === 1) {
+        try { sessionStorage.setItem('feed_cache', JSON.stringify(newPosts)) } catch { /* ignore */ }
+      }
       setPosts(prev => pageNum === 1 ? newPosts : [...prev, ...newPosts])
       setHasMore(pageNum < (res.data.totalPages || 1))
     } catch (err) { console.error(err) }

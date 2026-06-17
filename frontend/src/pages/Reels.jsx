@@ -102,13 +102,28 @@ export default function Reels() {
   const [saved, setSaved] = useState({});
   const [likesCount, setLikesCount] = useState({});
   const [showHeart, setShowHeart] = useState({});
+  const [following, setFollowing] = useState({});
   const videoRefs = useRef([]);
   const lastTap = useRef(0);
   const isMounted = useRef(true);
+  const cacheKey = 'reels_cache';
 
   const fetchReels = useCallback(async () => {
     if (!isMounted.current) return;
     setLoading(true);
+
+    // Try cache first
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          applyPosts(parsed);
+          setLoading(false);
+          // Don't return — fetch fresh data in background
+        }
+      }
+    } catch { /* ignore */ }
 
     try {
       const res = await axios.get('/api/posts/explore', {
@@ -125,33 +140,43 @@ export default function Reels() {
         post && post._id && (post.mediaUrl || post.video || post.image)
       );
 
-      const initialLiked = {};
-      const initialSaved = {};
-      const initialCounts = {};
-
-      validPosts.forEach(post => {
-        initialLiked[post._id] = Array.isArray(post.likes) && post.likes.some(id =>
-          id && currentUser?._id && String(id) === String(currentUser._id)
-        );
-        initialSaved[post._id] = Array.isArray(post.savedBy) && post.savedBy.some(id =>
-          id && currentUser?._id && String(id) === String(currentUser._id)
-        );
-        initialCounts[post._id] = post.likesCount || post.likes?.length || 0;
-      });
-
       if (isMounted.current) {
-        setPosts(validPosts);
-        setLiked(initialLiked);
-        setSaved(initialSaved);
-        setLikesCount(initialCounts);
-        videoRefs.current = new Array(validPosts.length);
+        applyPosts(validPosts);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(validPosts)); } catch { /* ignore */ }
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to load reels');
-      setPosts([]);
+      if (!posts.length) toast.error(error.response?.data?.message || 'Failed to load reels');
+      if (!posts.length) setPosts([]);
     } finally {
       if (isMounted.current) setLoading(false);
     }
+  }, [currentUser]);
+
+  const applyPosts = useCallback((validPosts) => {
+    const initialLiked = {};
+    const initialSaved = {};
+    const initialCounts = {};
+    const initialFollowing = {};
+
+    validPosts.forEach(post => {
+      initialLiked[post._id] = Array.isArray(post.likes) && post.likes.some(id =>
+        id && currentUser?._id && String(id) === String(currentUser._id)
+      );
+      initialSaved[post._id] = Array.isArray(post.savedBy) && post.savedBy.some(id =>
+        id && currentUser?._id && String(id) === String(currentUser._id)
+      );
+      initialCounts[post._id] = post.likesCount || post.likes?.length || 0;
+      initialFollowing[post._id] = post.author?.followers?.some(id =>
+        id && currentUser?._id && String(id) === String(currentUser._id)
+      ) || false;
+    });
+
+    setPosts(validPosts);
+    setLiked(initialLiked);
+    setSaved(initialSaved);
+    setLikesCount(initialCounts);
+    setFollowing(initialFollowing);
+    videoRefs.current = new Array(validPosts.length);
   }, [currentUser]);
 
   useEffect(() => {
@@ -211,6 +236,17 @@ export default function Reels() {
   };
 
   const handleShare = (post) => setSharePost(post);
+
+  const handleFollow = async (authorId, postId) => {
+    if (!authorId) return;
+    const isCurrentlyFollowing = following[postId];
+    setFollowing(prev => ({ ...prev, [postId]: !isCurrentlyFollowing }));
+    try {
+      await axios.post(`/api/profile/${authorId}/follow`, {}, { withCredentials: true });
+    } catch {
+      setFollowing(prev => ({ ...prev, [postId]: isCurrentlyFollowing }));
+    }
+  };
 
   const safePosts = useMemo(
     () => Array.isArray(posts) ? posts.filter(post => post && post._id) : [],
@@ -288,19 +324,34 @@ export default function Reels() {
                 </div>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-dark-900/90 via-dark-900/30 to-transparent z-20">
-                <div className="flex items-center gap-3 mb-4">
+              <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-dark-900/95 via-dark-900/50 to-transparent z-20">
+                <div className="flex items-center gap-2 mb-2">
                   <img
                     src={post.author?.profilePic || '/default-avatar.png'}
-                    className="w-10 h-10 rounded-full border border-white/20"
+                    className="w-9 h-9 rounded-full border-2 border-white/30 object-cover shrink-0"
                     alt=""
+                    loading="lazy"
                   />
-                  <span className="font-bold text-sm drop-shadow-md">{post.author?.username || 'user'}</span>
-                  <button className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ml-2 hover:bg-white/20 transition-colors">
-                    Follow
-                  </button>
+                  <span
+                    className="font-semibold text-sm drop-shadow-md cursor-pointer hover:underline"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/profile/${post.author?.username}`); }}
+                  >
+                    {post.author?.username || 'user'}
+                  </span>
+                  {post.author?._id !== currentUser?._id && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleFollow(post.author?._id, post._id); }}
+                      className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ml-1 ${
+                        following[post._id]
+                          ? 'bg-dark-600 text-dark-200'
+                          : 'bg-white text-dark-900'
+                      }`}
+                    >
+                      {following[post._id] ? 'Following' : 'Follow'}
+                    </button>
+                  )}
                 </div>
-                <p className="text-sm line-clamp-2 drop-shadow-md pr-12">{post.caption}</p>
+                <p className="text-sm line-clamp-2 drop-shadow-md">{post.caption}</p>
               </div>
             </div>
           </div>

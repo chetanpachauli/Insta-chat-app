@@ -16,7 +16,20 @@ export default function Explore() {
 
   const fetchPosts = useCallback(async (pageNum) => {
     try {
-      if (pageNum === 1) setLoading(true);
+      if (pageNum === 1) {
+        setLoading(true);
+        // Try cache
+        try {
+          const cached = sessionStorage.getItem('explore_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setPosts(parsed);
+              setLoading(false);
+            }
+          }
+        } catch { /* ignore */ }
+      }
       const token = localStorage.getItem('token');
       const res = await axios.get(`/api/posts/explore?page=${pageNum}&limit=20`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -25,6 +38,9 @@ export default function Explore() {
       setPosts(prev => pageNum === 1 ? newPosts : [...prev, ...newPosts]);
       setHasMore(pageNum < (res.data.totalPages || 1));
       setError(null);
+      if (pageNum === 1) {
+        try { sessionStorage.setItem('explore_cache', JSON.stringify(newPosts)); } catch { /* ignore */ }
+      }
     } catch (e) {
       console.error('Error fetching posts:', e);
       setError('Failed to load posts. Please try again.');
