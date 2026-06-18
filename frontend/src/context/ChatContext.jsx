@@ -571,7 +571,8 @@ const ChatProvider = ({ children }) => {
 
   const deleteMessage = useCallback(async (messageId, chatId) => {
     try {
-      if (messageId.startsWith('temp-')) {
+      if (!messageId) return false;
+      if (typeof messageId === 'string' && messageId.startsWith('temp-')) {
         setMessages(prev => ({
           ...prev,
           [chatId]: (prev[chatId] || []).filter(msg => msg._id !== messageId)

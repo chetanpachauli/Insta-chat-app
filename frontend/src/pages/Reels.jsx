@@ -11,7 +11,10 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
+import { motion } from 'framer-motion';
 import ShareModal from '../components/ShareModal';
+import { ReelsSkeleton } from '../components/SkeletonLoaders';
+import EmptyState from '../components/EmptyState';
 
 function ReelVideo({ post, index, videoRefs }) {
   const observerRef = useRef(null);
@@ -254,40 +257,40 @@ export default function Reels() {
   );
 
   if (loading) {
-    return (
-      <div className="h-screen bg-dark-900 flex flex-col items-center justify-center text-white p-4 text-center gap-4">
-        <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-dark-400 text-sm">{!currentUser ? 'Checking...' : 'Loading reels...'}</p>
-        <button onClick={() => window.location.reload()} className="btn-ghost text-sm">Refresh</button>
-      </div>
-    );
+    return <ReelsSkeleton />;
   }
 
   if (safePosts.length === 0) {
     return (
-      <div className="h-screen bg-dark-900 flex flex-col items-center justify-center text-white p-4 text-center gap-4">
-        <h2 className="text-xl font-semibold">No Reels Available</h2>
-        <p className="text-dark-400 text-sm max-w-md">Be the first to create one!</p>
-        <button onClick={() => navigate('/create')} className="btn-primary">Create a Post</button>
+      <div className="h-screen bg-dark-900 flex items-center justify-center">
+        <EmptyState
+          type="reels"
+          title="No Reels Available"
+          subtitle="Be the first to create one!"
+          action={() => navigate('/create')}
+          actionLabel="Create a Post"
+        />
       </div>
     );
   }
 
   return (
     <div className="h-screen bg-dark-900 text-white flex flex-col overflow-hidden">
-      <div className="absolute top-0 w-full z-50 p-6 flex items-center bg-gradient-to-b from-dark-900/80 to-transparent">
-        <ArrowLeftIcon className="w-7 h-7 cursor-pointer drop-shadow-lg" onClick={() => navigate(-1)} />
-        <h1 className="ml-4 text-xl font-bold drop-shadow-lg">Reels</h1>
+      <div className="absolute top-0 w-full z-50 px-4 py-3 md:p-6 flex items-center bg-gradient-to-b from-dark-900/80 to-transparent">
+        <ArrowLeftIcon className="w-6 h-6 cursor-pointer drop-shadow-lg md:w-7 md:h-7" onClick={() => navigate(-1)} />
+        <h1 className="ml-3 text-lg font-bold drop-shadow-lg md:text-xl md:ml-4">Reels</h1>
       </div>
 
       <div className="flex-1 overflow-y-scroll snap-y snap-mandatory scrollbar-thin">
         {safePosts.map((post, index) => (
-          <div key={post._id} className="h-full w-full relative snap-start flex items-center justify-center bg-dark-900 p-2 md:p-4">
+          <div key={post._id} className="h-dvh md:h-full w-full relative snap-start flex items-center justify-center bg-dark-900">
             <div
-              className="relative w-full h-full max-w-[450px] bg-dark-800 rounded-[2.5rem] overflow-hidden border border-dark-700 shadow-2xl select-none"
+              className="relative w-full h-full md:max-w-[450px] md:rounded-[2.5rem] md:overflow-hidden md:border md:border-dark-700 md:shadow-2xl select-none bg-dark-800/50"
               onClick={() => handleDoubleTap(post._id)}
             >
-              <MemoizedReelVideo post={post} index={index} videoRefs={videoRefs} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <MemoizedReelVideo post={post} index={index} videoRefs={videoRefs} />
+              </div>
 
               {showHeart[post._id] && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
@@ -295,40 +298,42 @@ export default function Reels() {
                 </div>
               )}
 
-              <div className="absolute right-4 bottom-32 flex flex-col items-center gap-7 z-30">
+              {/* Action buttons - right side */}
+              <div className="absolute right-3 bottom-28 md:right-4 md:bottom-32 flex flex-col items-center gap-5 md:gap-7 z-30">
                 <div className="flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => handleLike(post._id)}>
                     {liked[post._id]
-                      ? <HeartIconSolid className="w-9 h-9 text-red-500" />
-                      : <HeartIcon className="w-9 h-9 text-white" />}
+                      ? <HeartIconSolid className="w-8 h-8 md:w-9 md:h-9 text-red-500" />
+                      : <HeartIcon className="w-8 h-8 md:w-9 md:h-9 text-white" />}
                   </button>
-                  <span className="text-xs font-bold mt-1 drop-shadow-md">{likesCount[post._id] || 0}</span>
+                  <span className="text-[11px] md:text-xs font-bold mt-0.5 drop-shadow-md">{likesCount[post._id] || 0}</span>
                 </div>
 
                 <button className="flex flex-col items-center" onClick={(e) => { e.stopPropagation(); navigate(`/p/${post._id}`); }}>
-                  <ChatBubbleLeftRightIcon className="w-9 h-9 text-white drop-shadow-lg" />
-                  <span className="text-xs font-bold mt-1">{post.comments?.length || 0}</span>
+                  <ChatBubbleLeftRightIcon className="w-8 h-8 md:w-9 md:h-9 text-white drop-shadow-lg" />
+                  <span className="text-[11px] md:text-xs font-bold mt-0.5">{post.comments?.length || 0}</span>
                 </button>
 
                 <button onClick={(e) => { e.stopPropagation(); handleShare(post); }}>
-                  <PaperAirplaneIcon className="w-9 h-9 text-white -rotate-45 drop-shadow-lg" />
+                  <PaperAirplaneIcon className="w-8 h-8 md:w-9 md:h-9 text-white -rotate-45 drop-shadow-lg" />
                 </button>
 
                 <div className="flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => handleSave(post._id)}>
                     {saved[post._id]
-                      ? <BookmarkIconSolid className="w-9 h-9 text-yellow-400 drop-shadow-lg" />
-                      : <BookmarkIcon className="w-9 h-9 text-white drop-shadow-lg" />}
+                      ? <BookmarkIconSolid className="w-8 h-8 md:w-9 md:h-9 text-yellow-400 drop-shadow-lg" />
+                      : <BookmarkIcon className="w-8 h-8 md:w-9 md:h-9 text-white drop-shadow-lg" />}
                   </button>
-                  <span className="text-xs font-bold mt-1">{post.savedBy?.length || 0}</span>
+                  <span className="text-[11px] md:text-xs font-bold mt-0.5">{post.savedBy?.length || 0}</span>
                 </div>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-dark-900/95 via-dark-900/50 to-transparent z-20">
+              {/* Bottom info */}
+              <div className="absolute bottom-0 left-0 right-0 px-3 pb-4 pt-12 md:p-6 md:pb-8 bg-gradient-to-t from-dark-900/95 via-dark-900/50 to-transparent z-20">
                 <div className="flex items-center gap-2 mb-2">
                   <img
                     src={post.author?.profilePic || '/default-avatar.png'}
-                    className="w-9 h-9 rounded-full border-2 border-white/30 object-cover shrink-0"
+                    className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-white/30 object-cover shrink-0"
                     alt=""
                     loading="lazy"
                   />
@@ -341,7 +346,7 @@ export default function Reels() {
                   {post.author?._id !== currentUser?._id && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleFollow(post.author?._id, post._id); }}
-                      className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ml-1 ${
+                      className={`text-[11px] md:text-xs font-bold px-3 py-1 rounded-full transition-colors ml-1 shrink-0 ${
                         following[post._id]
                           ? 'bg-dark-600 text-dark-200'
                           : 'bg-white text-dark-900'
@@ -351,7 +356,9 @@ export default function Reels() {
                     </button>
                   )}
                 </div>
-                <p className="text-sm line-clamp-2 drop-shadow-md">{post.caption}</p>
+                {post.caption && (
+                  <p className="text-sm leading-tight line-clamp-2 drop-shadow-md pr-14 md:pr-16">{post.caption}</p>
+                )}
               </div>
             </div>
           </div>

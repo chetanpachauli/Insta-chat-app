@@ -3,6 +3,7 @@ import { ChatContext } from '../context/ChatContext';
 import { AuthContext } from '../context/AuthContext';
 import EmojiPicker from 'emoji-picker-react';
 import { PaperAirplaneIcon, PhotoIcon, FaceSmileIcon, MicrophoneIcon, StopIcon } from '@heroicons/react/24/outline';
+import compressImage from '../utils/compressImage';
 
 const MessageInput = memo(function MessageInput() {
   const chat = useContext(ChatContext);
@@ -67,7 +68,8 @@ const MessageInput = memo(function MessageInput() {
     if (!file || !selectedId) return;
     try {
       setUploading(true);
-      await sendMessage({ receiverId: selectedId, message: text || '', image: file, conversationId });
+      const compressed = file.type.startsWith('image/') ? await compressImage(file, 1000, 0.8) : file;
+      await sendMessage({ receiverId: selectedId, message: text || '', image: compressed, conversationId });
       setText('');
     } catch (error) {
       console.error('Error sending image:', error);

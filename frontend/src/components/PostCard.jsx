@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { useConfirm } from '../hooks/useConfirm'
 import Avatar from './Avatar'
 import ShareModal from './ShareModal'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function PostCard({ post, onLikeChanged, onDeleted }) {
   const { user } = useContext(AuthContext)
@@ -95,7 +96,12 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
   }
 
   return (
-    <div className="card overflow-hidden animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="card overflow-hidden hover:border-dark-600/50 hover:shadow-lg hover:shadow-brand-500/5 transition-all duration-300"
+    >
       {/* Header */}
       <div className="p-3 flex items-center gap-3">
         <Avatar user={post.author} size="md" />
@@ -108,25 +114,37 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
             <button onClick={() => setShowMenu(s => !s)} className="btn-icon text-dark-400">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
             </button>
-            {showMenu && (
-              <div className="absolute right-0 mt-1 w-36 bg-dark-800 border border-dark-700 rounded-xl shadow-xl z-50 py-1">
-                <button onClick={() => { setShowMenu(false); setEditing(true); setEditCaption(post.caption || ''); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
-                  <Edit3 className="w-4 h-4" /> Edit
-                </button>
-                <button onClick={() => { setShowMenu(false); handleArchive(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
-                  {archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />} {archived ? 'Restore' : 'Archive'}
-                </button>
-                <button onClick={() => { setShowMenu(false); handleDelete(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-dark-700">
-                  <Trash2 className="w-4 h-4" /> Delete
-                </button>
-              </div>
-            )}
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="absolute right-0 mt-1 w-36 bg-dark-800 border border-dark-700 rounded-xl shadow-xl z-50 py-1"
+                >
+                  <button onClick={() => { setShowMenu(false); setEditing(true); setEditCaption(post.caption || ''); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
+                    <Edit3 className="w-4 h-4" /> Edit
+                  </button>
+                  <button onClick={() => { setShowMenu(false); handleArchive(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-dark-200 hover:bg-dark-700">
+                    {archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />} {archived ? 'Restore' : 'Archive'}
+                  </button>
+                  <button onClick={() => { setShowMenu(false); handleDelete(); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-dark-700">
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
       {/* Media */}
-      <div className="relative w-full bg-black flex items-center justify-center" onDoubleClick={onDoubleTap}>
+      <motion.div
+        className="relative w-full bg-black flex items-center justify-center overflow-hidden"
+        onDoubleClick={onDoubleTap}
+        whileHover={{ scale: 1.005 }}
+        transition={{ duration: 0.2 }}
+      >
         {post.mediaType === 'video' ? (
           <video
             src={post.image}
@@ -143,25 +161,41 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
             crossOrigin="anonymous"
           />
         )}
-        {dblLikeAnim && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <Heart className="w-20 h-20 text-white/90 animate-heartbeat" fill="white" />
-          </div>
-        )}
-      </div>
+        <AnimatePresence>
+          {dblLikeAnim && (
+            <motion.div
+              initial={{ scale: 0, opacity: 1 }}
+              animate={{ scale: 1.3, opacity: 1 }}
+              exit={{ scale: 2, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
+              <Heart className="w-20 h-20 text-white" fill="white" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Actions */}
       <div className="p-3">
         <div className="flex items-center gap-3 mb-2">
-          <button onClick={toggleLike} className={`btn-icon ${liked ? 'text-red-400' : 'text-dark-300'}`}>
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            onClick={toggleLike}
+            className={`btn-icon ${liked ? 'text-red-400' : 'text-dark-300'}`}
+          >
             <Heart className={`w-5 h-5 ${liked ? 'fill-red-400' : ''}`} />
-          </button>
-          <button className="btn-icon text-dark-300"><MessageCircle className="w-5 h-5" /></button>
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.85 }} className="btn-icon text-dark-300"><MessageCircle className="w-5 h-5" /></motion.button>
           <div className="ml-auto flex items-center gap-1">
-            <button onClick={() => setShareOpen(true)} className="btn-icon text-dark-300"><Send className="w-5 h-5" /></button>
-            <button onClick={toggleSave} className={`btn-icon ${saved ? 'text-yellow-400' : 'text-dark-300'}`}>
+            <motion.button whileTap={{ scale: 0.85 }} onClick={() => setShareOpen(true)} className="btn-icon text-dark-300"><Send className="w-5 h-5" /></motion.button>
+            <motion.button
+              whileTap={{ scale: 0.85 }}
+              onClick={toggleSave}
+              className={`btn-icon ${saved ? 'text-yellow-400' : 'text-dark-300'}`}
+            >
               <Bookmark className={`w-5 h-5 ${saved ? 'fill-yellow-400' : ''}`} />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -219,7 +253,7 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
         </div>
       </div>
       <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} post={post} />
-    </div>
+    </motion.div>
   )
 }
 

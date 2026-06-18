@@ -3,6 +3,7 @@ import { PaperClipIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import compressImage from '../utils/compressImage';
 
 export default function CreatePost({ onCreated }) {
   const { user } = useAuth();
@@ -121,9 +122,15 @@ export default function CreatePost({ onCreated }) {
     console.log('Upload in progress...');
 
     try {
+      let uploadFile = file;
+      if (mediaType === 'image') {
+        uploadFile = await compressImage(file, 1200, 0.85);
+        console.log(`Image compressed: ${(file.size / 1024 / 1024).toFixed(1)}MB -> ${(uploadFile.size / 1024 / 1024).toFixed(1)}MB`);
+      }
+
       // Upload to Cloudinary
       console.log('Uploading file to Cloudinary...');
-      const { url: mediaUrl, type: mediaType } = await uploadToCloudinary(file);
+      const { url: mediaUrl, type: mediaType } = await uploadToCloudinary(uploadFile);
       
       // Create post in the database
       console.log('Creating post in database...', {

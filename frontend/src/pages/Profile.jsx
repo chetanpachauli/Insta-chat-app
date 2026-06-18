@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { useConfirm } from '../hooks/useConfirm';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   UserCircleIcon, 
   HomeIcon,
@@ -25,6 +26,8 @@ import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid, PlusIco
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useRef } from 'react';
 import api from '../utils/axiosConfig';
+import { ProfileSkeleton } from '../components/SkeletonLoaders';
+import EmptyState from '../components/EmptyState';
 
 // Follow Button Component with improved UX
 const FollowButton = ({ profile, onUpdate, setProfile }) => {
@@ -622,9 +625,8 @@ const Profile = () => {
   // Show loading state only if we have no profile data yet
   if (loading && !profile) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mb-4"></div>
-        <p className="text-gray-300">Loading profile data...</p>
+      <div className="min-h-screen bg-dark-900">
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -809,28 +811,36 @@ const Profile = () => {
 
           <div className="min-h-[300px] w-full">
             {tab === 'posts' && (
-              <div className="grid grid-cols-3 gap-1 p-1">
-                {profile?.posts?.length > 0 ? (
-                  profile.posts.map((post) => (
-                    <div key={post._id} className="aspect-square overflow-hidden rounded-lg">
+              profile?.posts?.length > 0 ? (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
+                  className="grid grid-cols-3 gap-1 p-1"
+                >
+                  {profile.posts.map((post) => (
+                    <motion.div
+                      key={post._id}
+                      variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1 } }}
+                      className="aspect-square overflow-hidden rounded-lg"
+                    >
                       <PostGridItem
                         post={post}
                         onClick={() => handlePostClick(post._id)}
                         isOwnProfile={isOwnProfile}
                         onDelete={handleDeletePost}
                       />
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-3 flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mb-4">
-                      <PhotoIcon className="w-8 h-8 text-dark-400" />
-                    </div>
-                    <h3 className="text-lg font-bold mb-1">No Posts Yet</h3>
-                    <p className="text-dark-400 text-sm max-w-md">When you share photos and videos, they'll appear on your profile.</p>
-                  </div>
-                )}
-              </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                <EmptyState
+                  type="default"
+                  icon={PhotoIcon}
+                  title="No Posts Yet"
+                  subtitle="When you share photos and videos, they'll appear on your profile."
+                />
+              )
             )}
 
             {tab === 'saved' && (
@@ -839,45 +849,60 @@ const Profile = () => {
                   <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : savedPosts.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1 p-1">
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
+                  className="grid grid-cols-3 gap-1 p-1"
+                >
                   {savedPosts.map(post => (
-                    <PostGridItem key={post._id} post={post} onClick={() => handlePostClick(post._id)} />
+                    <motion.div
+                      key={post._id}
+                      variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1 } }}
+                    >
+                      <PostGridItem key={post._id} post={post} onClick={() => handlePostClick(post._id)} />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               ) : (
-                <div className="py-16 text-center">
-                  <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mx-auto mb-4">
-                    <BookmarkIcon className="w-8 h-8 text-dark-400" />
-                  </div>
-                  <h3 className="text-lg font-bold mb-1">Saved</h3>
-                  <p className="text-dark-400 text-sm max-w-xs mx-auto">Save photos and videos that you want to see again.</p>
-                </div>
+                <EmptyState
+                  type="default"
+                  title="Saved"
+                  subtitle="Save photos and videos that you want to see again."
+                />
               )
             )}
 
             {tab === 'archived' && (
-              <div className="grid grid-cols-3 gap-1 p-1">
-                {profile?.posts?.filter(p => p.isArchived)?.length > 0 ? (
-                  profile.posts.filter(p => p.isArchived).map((post) => (
-                    <div key={post._id} className="aspect-square overflow-hidden rounded-lg">
+              profile?.posts?.filter(p => p.isArchived)?.length > 0 ? (
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
+                  className="grid grid-cols-3 gap-1 p-1"
+                >
+                  {profile.posts.filter(p => p.isArchived).map((post) => (
+                    <motion.div
+                      key={post._id}
+                      variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1 } }}
+                      className="aspect-square overflow-hidden rounded-lg"
+                    >
                       <PostGridItem
                         post={post}
                         onClick={() => handlePostClick(post._id)}
                         isOwnProfile={true}
                         onDelete={() => {}}
                       />
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-3 flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-16 h-16 rounded-full border-2 border-dark-700 flex items-center justify-center mb-4">
-                      <ArchiveBoxIcon className="w-8 h-8 text-dark-400" />
-                    </div>
-                    <h3 className="text-lg font-bold mb-1">No Archived Posts</h3>
-                    <p className="text-dark-400 text-sm max-w-md">Archive your posts to hide them from your profile.</p>
-                  </div>
-                )}
-              </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                <EmptyState
+                  type="default"
+                  title="Archive"
+                  subtitle="Your archived posts will appear here."
+                />
+              )
             )}
 
             {tab === 'tagged' && (

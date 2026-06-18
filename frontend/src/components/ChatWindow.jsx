@@ -1,9 +1,82 @@
-import React, { memo, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { memo, useContext, useEffect, useRef, useCallback, useState } from 'react';
 import ChatContext from '../context/ChatContext';
 import AuthContext from '../context/AuthContext';
-import { Trash2, Users } from 'lucide-react';
+import { Trash2, Users, Play, Pause } from 'lucide-react';
 import MessageInput from './MessageInput';
 import MessageReactions from './MessageReactions';
+
+const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  const fmt = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+      clearInterval(intervalRef.current);
+      setPlaying(false);
+    } else {
+      audioRef.current.play();
+      intervalRef.current = setInterval(() => {
+        if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+      }, 250);
+      setPlaying(true);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearInterval(intervalRef.current);
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    };
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 py-1.5 min-w-[200px]">
+      <button
+        onClick={toggle}
+        className="w-8 h-8 rounded-full bg-dark-700 hover:bg-dark-600 flex items-center justify-center shrink-0"
+      >
+        {playing ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
+      </button>
+      <div
+        className="flex-1 h-1.5 bg-dark-700 rounded-full overflow-hidden cursor-pointer"
+        onClick={(e) => {
+          if (!audioRef.current) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pct = (e.clientX - rect.left) / rect.width;
+          audioRef.current.currentTime = pct * (audioRef.current.duration || 0);
+          setCurrentTime(audioRef.current.currentTime);
+        }}
+      >
+        <div
+          className="h-full bg-gradient-brand rounded-full transition-all duration-150"
+          style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+        />
+      </div>
+      <span className="text-xs text-dark-400 w-10 text-right shrink-0">
+        {playing ? fmt(currentTime) : fmt(duration)}
+      </span>
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onEnded={() => { setPlaying(false); setCurrentTime(0); clearInterval(intervalRef.current); }}
+        onError={() => setDuration(0)}
+      />
+    </div>
+  );
+});
 
 const ChatWindow = memo(function ChatWindow({ chat, auth }) {
   const { selectedChat, messages, deleteMessage, onlineUsers, typingUsers, fetchMessages } = chat || {};
@@ -151,11 +224,18 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
                           alt="Attachment"
                           className="max-h-60 w-full object-cover rounded-xl"
                           referrerPolicy="no-referrer"
+                          loading="lazy"
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = 'https://via.placeholder.com/300x200?text=Not+Available';
                           }}
                         />
+                      </div>
+                    )}
+
+                    {m.audio && (
+                      <div className={`mb-1.5 ${isMe ? 'ml-auto' : ''}`}>
+                        <AudioMessagePlayer src={m.audio} />
                       </div>
                     )}
 
@@ -179,9 +259,9 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
                       onReact={handleReact}
                     />
 
-                    {isMe && (
+                    {isMe && m._id && (
                       <button
-                        onClick={() => deleteMessage(m._id, selectedChat._id)}
+                        onClick={() => m._id && deleteMessage(m._id, selectedChat._id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-2 -right-2 bg-dark-700 p-1.5 rounded-full hover:bg-red-500/20"
                         title="Delete message"
                       >
@@ -200,10 +280,17 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
 
           {/* Typing indicator */}
           {selectedChat?._id && (typingUsers[selectedChat._id] || []).length > 0 && (
-            <div className="px-4 py-2 text-xs text-dark-400 animate-pulse-soft">
-              {selectedChat.isGroup
-                ? `${(typingUsers[selectedChat._id] || []).length} user(s) typing...`
-                : `${selectedChat.username} is typing...`}
+            <div className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-dark-400">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 rounded-full bg-dark-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-2 h-2 rounded-full bg-dark-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-2 h-2 rounded-full bg-dark-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+              <span>
+                {selectedChat.isGroup
+                  ? `${(typingUsers[selectedChat._id] || []).length} user(s) typing...`
+                  : `${selectedChat.username} is typing...`}
+              </span>
             </div>
           )}
 

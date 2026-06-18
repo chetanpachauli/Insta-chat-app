@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, HeartIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import EmptyState from '../components/EmptyState';
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -98,49 +100,61 @@ export default function Notifications() {
             Object.entries(groupedNotifications).map(([date, dateNotifications]) => (
               <div key={date}>
                 <div className="px-4 py-2 text-xs font-medium text-dark-400 uppercase tracking-wider">{date}</div>
-                {dateNotifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    className="flex items-center p-4 hover:bg-dark-800/50 cursor-pointer transition-colors"
-                    onClick={() => notification.post && navigate(`/p/${notification.post}`)}
-                  >
-                    <div className="relative shrink-0 mr-3">
-                      <img
-                        src={notification.from?.profilePic || '/default-avatar.png'}
-                        alt={notification.from?.username || 'User'}
-                        className="w-10 h-10 rounded-full object-cover"
-                        loading="lazy"
-                      />
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-dark-900 flex items-center justify-center">
-                        <div className="w-4 h-4 rounded-full bg-dark-700 flex items-center justify-center">
-                          {renderNotificationIcon(notification.type)}
+                <AnimatePresence mode="popLayout">
+                  {dateNotifications.map((notification, idx) => (
+                    <motion.div
+                      layout
+                      key={notification._id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, delay: idx * 0.03 }}
+                      className="flex items-center p-4 hover:bg-dark-800/50 cursor-pointer transition-colors gap-3"
+                      onClick={() => notification.post && navigate(`/p/${notification.post})`)}
+                    >
+                      <div className="relative shrink-0">
+                        <motion.img
+                          whileHover={{ scale: 1.1 }}
+                          src={notification.from?.profilePic || '/default-avatar.png'}
+                          alt={notification.from?.username || 'User'}
+                          className="w-11 h-11 rounded-full object-cover ring-2 ring-dark-700"
+                          loading="lazy"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-dark-900 flex items-center justify-center">
+                          <div className="w-4 h-4 rounded-full bg-dark-700 flex items-center justify-center">
+                            {renderNotificationIcon(notification.type)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">
-                        <span className="font-semibold">{notification.from?.username || 'Someone'}</span>{' '}
-                        {renderNotificationMessage(notification)}
-                      </p>
-                      <p className="text-xs text-dark-400 mt-0.5">
-                        {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    {notification.post?.image && (
-                      <img src={notification.post.image} alt="" className="w-12 h-12 rounded-lg object-cover ml-3 shrink-0" loading="lazy" />
-                    )}
-                  </div>
-                ))}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm leading-relaxed">
+                          <span className="font-semibold hover:underline">{notification.from?.username || 'Someone'}</span>{' '}
+                          {renderNotificationMessage(notification)}
+                        </p>
+                        <p className="text-xs text-dark-500 mt-0.5">
+                          {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      {notification.post?.image && (
+                        <motion.img
+                          whileHover={{ scale: 1.05 }}
+                          src={notification.post.image}
+                          alt=""
+                          className="w-12 h-12 rounded-xl object-cover shrink-0 ring-1 ring-dark-700"
+                          loading="lazy"
+                        />
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             ))
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mb-4">
-                <HeartIcon className="w-8 h-8 text-dark-400" />
-              </div>
-              <h3 className="text-lg font-bold mb-1">No notifications yet</h3>
-              <p className="text-dark-400 text-sm max-w-xs">When you get notifications, they'll appear here.</p>
-            </div>
+            <EmptyState
+              type="notifications"
+              title="No notifications yet"
+              subtitle="When you get notifications, they'll appear here."
+            />
           )}
         </div>
       </div>

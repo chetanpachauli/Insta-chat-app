@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { MagnifyingGlassIcon as SearchIcon, HeartIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import { ExploreSkeleton } from '../components/SkeletonLoaders';
+import EmptyState from '../components/EmptyState';
+import { motion } from 'framer-motion';
 
 export default function Explore() {
   const navigate = useNavigate();
@@ -98,11 +101,7 @@ export default function Explore() {
 
         {/* Content */}
         {loading && posts.length === 0 ? (
-          <div className="grid grid-cols-3 gap-1 p-2">
-            {[...Array(9)].map((_, i) => (
-              <div key={i} className="aspect-square bg-dark-800 animate-pulse rounded-lg" />
-            ))}
-          </div>
+          <ExploreSkeleton />
         ) : error ? (
           <div className="text-center py-16">
             <p className="text-red-400 mb-4">{error}</p>
@@ -110,11 +109,23 @@ export default function Explore() {
           </div>
         ) : filtered.length > 0 ? (
           <>
-            <div className="grid grid-cols-3 gap-1 p-2">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.03 } },
+              }}
+              className="grid grid-cols-3 gap-1 p-2"
+            >
               {filtered.map(post => (
-                <div
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, scale: 0.9 },
+                    visible: { opacity: 1, scale: 1 },
+                  }}
                   key={post._id}
-                  className="aspect-square relative group cursor-pointer overflow-hidden rounded-lg bg-dark-800 animate-fade-in"
+                  className="aspect-square relative group cursor-pointer overflow-hidden rounded-lg bg-dark-800"
                   onClick={() => navigate(`/p/${post._id}`)}
                 >
                   <img
@@ -134,9 +145,9 @@ export default function Explore() {
                       <span className="text-sm font-medium">{formatNumber(post.comments?.length || 0)}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
             <div ref={loaderRef} className="h-12 flex items-center justify-center">
               {loading && <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />}
               {!hasMore && posts.length > 0 && (
@@ -145,20 +156,13 @@ export default function Explore() {
             </div>
           </>
         ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-4">
-              <SearchIcon className="w-8 h-8 text-dark-400" />
-            </div>
-            <h3 className="text-lg font-bold mb-1">No Posts Found</h3>
-            <p className="text-dark-400 text-sm">
-              {q.trim() ? 'Try a different search term' : 'No posts available to explore'}
-            </p>
-            {q.trim() && (
-              <button onClick={() => setQ('')} className="text-brand-400 text-sm font-medium mt-4 hover:underline">
-                Clear search
-              </button>
-            )}
-          </div>
+          <EmptyState
+            type="explore"
+            title="No Posts Found"
+            subtitle={q.trim() ? 'Try a different search term' : 'No posts available to explore'}
+            action={q.trim() ? (() => setQ('')) : null}
+            actionLabel={q.trim() ? 'Clear search' : ''}
+          />
         )}
       </div>
     </div>

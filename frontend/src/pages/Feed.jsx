@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import axios from 'axios'
 import PostCard from '../components/PostCard'
+import { PostCardSkeleton } from '../components/SkeletonLoaders'
+import EmptyState from '../components/EmptyState'
 
 export default function Feed() {
   const [posts, setPosts] = useState([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const loaderRef = useRef(null)
 
   const fetchPosts = useCallback(async (pageNum) => {
@@ -69,11 +71,19 @@ export default function Feed() {
             <p className="text-dark-500 text-sm">You're all caught up</p>
           )}
         </div>
-        {posts.length === 0 && !loading && (
-          <div className="text-center py-16">
-            <p className="text-dark-400">No posts in your feed yet. Follow some users!</p>
+        {posts.length === 0 && !loading ? (
+          <EmptyState
+            type="feed"
+            title="No posts yet"
+            subtitle="Follow some users to see their posts in your feed"
+            action={() => window.location.href = '/explore'}
+            actionLabel="Explore"
+          />
+        ) : posts.length === 0 && loading ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <PostCardSkeleton key={i} />)}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
