@@ -455,7 +455,7 @@ const ChatProvider = ({ children }) => {
       message: message,
       text: message,
       image: imagePreviewUrl,
-      audio: audio ? 'sending' : '',
+      audio: '',
       createdAt: new Date().toISOString(),
       isSending: true,
       sender: user

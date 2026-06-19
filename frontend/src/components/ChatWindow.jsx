@@ -1,16 +1,31 @@
 import React, { memo, useContext, useEffect, useRef, useCallback, useState } from 'react';
 import ChatContext from '../context/ChatContext';
 import AuthContext from '../context/AuthContext';
-import { Trash2, Users, Play, Pause } from 'lucide-react';
+import { Trash2, Users, Play, Pause, ArrowLeft } from 'lucide-react';
 import MessageInput from './MessageInput';
 import MessageReactions from './MessageReactions';
+
+const useMediaQuery = (query) => {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const listener = () => setMatches(media.matches);
+    media.addEventListener('change', listener);
+    setMatches(media.matches);
+    return () => media.removeEventListener('change', listener);
+  }, [query]);
+  return matches;
+};
 
 const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const audioRef = useRef(null);
   const intervalRef = useRef(null);
+
+  const isValidSrc = src && typeof src === 'string' && (src.startsWith('http') || src.startsWith('blob:'));
 
   const fmt = (s) => {
     const m = Math.floor(s / 60);
@@ -18,18 +33,23 @@ const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const toggle = () => {
-    if (!audioRef.current) return;
+  const toggle = async () => {
+    if (!audioRef.current || hasError) return;
     if (playing) {
       audioRef.current.pause();
       clearInterval(intervalRef.current);
       setPlaying(false);
     } else {
-      audioRef.current.play();
-      intervalRef.current = setInterval(() => {
-        if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
-      }, 250);
-      setPlaying(true);
+      try {
+        await audioRef.current.play();
+        intervalRef.current = setInterval(() => {
+          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+        }, 250);
+        setPlaying(true);
+      } catch (e) {
+        console.warn('Audio play failed:', e.message);
+        setHasError(true);
+      }
     }
   };
 
@@ -40,8 +60,18 @@ const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
     };
   }, []);
 
+  if (!isValidSrc) return null;
+
+  if (hasError) {
+    return (
+      <div className="flex items-center gap-2 py-1.5 text-xs text-red-400">
+        Audio unavailable
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2 py-1.5 min-w-[200px]">
+    <div className="flex items-center gap-2 py-1.5 min-w-0 w-full max-w-[260px]">
       <button
         onClick={toggle}
         className="w-8 h-8 rounded-full bg-dark-700 hover:bg-dark-600 flex items-center justify-center shrink-0"
@@ -49,7 +79,7 @@ const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
         {playing ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
       </button>
       <div
-        className="flex-1 h-1.5 bg-dark-700 rounded-full overflow-hidden cursor-pointer"
+        className="flex-1 h-1.5 bg-dark-700 rounded-full overflow-hidden cursor-pointer min-w-0"
         onClick={(e) => {
           if (!audioRef.current) return;
           const rect = e.currentTarget.getBoundingClientRect();
@@ -72,14 +102,14 @@ const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
         preload="metadata"
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onEnded={() => { setPlaying(false); setCurrentTime(0); clearInterval(intervalRef.current); }}
-        onError={() => setDuration(0)}
+        onError={() => { setHasError(true); setDuration(0); }}
       />
     </div>
   );
 });
 
 const ChatWindow = memo(function ChatWindow({ chat, auth }) {
-  const { selectedChat, messages, deleteMessage, onlineUsers, typingUsers, fetchMessages } = chat || {};
+  const { selectedChat, messages, deleteMessage, onlineUsers, typingUsers, fetchMessages, setSelectedChat } = chat || {};
   const { user } = auth || {};
   const containerRef = useRef(null);
   const isFetchingRef = useRef(false);
@@ -167,7 +197,15 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
       ) : (
         <>
           {/* Header */}
-          <div className="flex-shrink-0 px-4 py-3 bg-dark-800/50 backdrop-blur-sm border-b border-dark-700/50 flex items-center gap-3">
+          <div className="flex-shrink-0 px-3 py-3 bg-dark-800/50 backdrop-blur-sm border-b border-dark-700/50 flex items-center gap-2">
+            {useMediaQuery('(max-width: 768px)') && (
+              <button
+                onClick={() => setSelectedChat(null)}
+                className="btn-icon text-dark-300 hover:text-white shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             {selectedChat?.isGroup ? (
               <div className="w-10 h-10 rounded-full bg-gradient-brand flex items-center justify-center text-white ring-2 ring-dark-700 shrink-0">
                 <Users className="w-5 h-5" />

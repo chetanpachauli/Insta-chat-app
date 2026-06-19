@@ -73,14 +73,14 @@ export default function Login() {
       </div>
 
       {/* Form */}
-      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
+      <div className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="w-full max-w-sm"
         >
-          <div className="card p-8 backdrop-blur-xl bg-dark-900/70 border-dark-700/50 hover:border-brand-500/20 transition-all duration-300 relative overflow-hidden">
+          <div className="card p-6 md:p-8 backdrop-blur-xl bg-dark-900/70 border-dark-700/50 hover:border-brand-500/20 transition-all duration-300 relative overflow-hidden">
             {/* Subtle glow behind card */}
             <div className="absolute -inset-20 pointer-events-none blur-3xl" style={{
               background: 'radial-gradient(ellipse at center, rgba(168,85,247,0.12) 0%, rgba(236,72,153,0.08) 40%, transparent 70%)',
