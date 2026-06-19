@@ -41,15 +41,9 @@ function Avatar({ user = {}, size = 'md', className = '', isOnline = false }) {
   };
 
   const imageUrl = user?.profilePic || user?.avatar;
+  const isValidUrl = imageUrl && typeof imageUrl === 'string' && imageUrl.trim().length > 0;
   
-  if (!imageUrl || imageError) {
-    return renderFallback();
-  }
-
-  // Check if the URL is valid
-  try {
-    new URL(imageUrl);
-  } catch (e) {
+  if (!isValidUrl || imageError) {
     return renderFallback();
   }
 

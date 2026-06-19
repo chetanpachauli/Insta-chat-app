@@ -22,13 +22,27 @@ function AuthProvider({ children }) {
   axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   axios.defaults.withCredentials = true;
 
+  // Add global request interceptor to append authorization header dynamically
+  axios.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
   // Axios interceptor for auto-refresh on 401
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (res) => res,
       async (err) => {
         const original = err.config;
-        if (err.response?.status === 401 && !original._retry) {
+        if (err.response?.status === 401 && !original._retry && original.url && !original.url.includes('/refresh-token')) {
           original._retry = true;
           const storedRefresh = localStorage.getItem('refreshToken');
           if (storedRefresh) {

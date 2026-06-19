@@ -64,7 +64,14 @@ exports.addComment = async (req, res) => {
     if (!post) return res.status(404).json({ message: 'Post not found' })
     post.comments.push({ author: userId, text })
     await post.save()
-    const last = post.comments[post.comments.length - 1]
+    
+    // Fetch and populate the newly added comment's author
+    const populatedPost = await Post.findById(postId).populate({
+      path: 'comments.author',
+      select: 'username profilePic'
+    });
+    const last = populatedPost.comments[populatedPost.comments.length - 1];
+
     // notification for post author
     if (String(post.author._id || post.author) !== String(userId)) {
       const n = await Notification.create({ user: post.author._id || post.author, from: userId, type: 'comment', post: post._id })

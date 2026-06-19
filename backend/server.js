@@ -19,18 +19,29 @@ app.use(cookieParser());
 // Define allowed origins
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
   'https://insta-chat-app-five.vercel.app',
-  'http://localhost:5173'
-].filter(Boolean); // Remove any falsy values (like undefined if FRONTEND_ORIGIN is not set)
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000'
+].filter(Boolean); // Remove any falsy values
+
+// Helper to validate origin (allows exact matches, localhost, and Vercel domains)
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  return allowedOrigins.includes(origin) || 
+         origin.endsWith('.vercel.app') || 
+         origin.startsWith('http://localhost:');
+};
 
 // CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    if (!isOriginAllowed(origin)) {
+      console.warn(`CORS blocked request from origin: ${origin}`);
+      const msg = `The CORS policy for this site does not allow access from origin: ${origin}`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
@@ -67,12 +78,12 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: function(origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
       
-      if (allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
+      console.warn(`Socket.io CORS blocked connection from origin: ${origin}`);
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -197,6 +208,77 @@ io.on('connection', (socket) => {
 
   socket.on('groupStopTyping', ({ conversationId, from }) => {
     socket.to(conversationId).emit('groupStopTyping', { from, conversationId });
+  });
+
+  // WebRTC Calling signaling
+  socket.on('callUser', (data) => {
+    const { userToCall, signalData, from, fromUser, type } = data;
+    const receiverSocketId = userSocketMap[userToCall];
+    if (receiverSocketId) {
+      console.log(`Forwarding call from ${from} to user ${userToCall} (Socket: ${receiverSocketId})`);
+      io.to(receiverSocketId).emit('incomingCall', {
+        signal: signalData,
+        from,
+        fromUser,
+        type
+      });
+    } else {
+      console.log(`Call failed: User ${userToCall} is offline`);
+      socket.emit('callOffline', { to: userToCall });
+    }
+  });
+
+  socket.on('answerCall', (data) => {
+    const { to, signal } = data;
+    const callerSocketId = userSocketMap[to];
+    if (callerSocketId) {
+      console.log(`Forwarding call answer to user ${to} (Socket: ${callerSocketId})`);
+      io.to(callerSocketId).emit('callAccepted', { signal });
+    }
+  });
+
+  socket.on('iceCandidate', (data) => {
+    const { to, candidate } = data;
+    const recipientSocketId = userSocketMap[to];
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('iceCandidate', { candidate });
+    }
+  });
+
+  socket.on('rejectCall', (data) => {
+    const { to } = data;
+    const callerSocketId = userSocketMap[to];
+    if (callerSocketId) {
+      console.log(`Forwarding call reject to user ${to}`);
+      io.to(callerSocketId).emit('callRejected');
+    }
+  });
+
+  socket.on('endCall', (data) => {
+    const { to } = data;
+    const otherSocketId = userSocketMap[to];
+    if (otherSocketId) {
+      console.log(`Forwarding call end to user ${to}`);
+      io.to(otherSocketId).emit('callEnded');
+    }
+  });
+
+  socket.on('cancelCall', (data) => {
+    const { to } = data;
+    const receiverSocketId = userSocketMap[to];
+    if (receiverSocketId) {
+      console.log(`Forwarding call cancel to user ${to}`);
+      io.to(receiverSocketId).emit('callCancelled');
+    }
+  });
+
+  socket.on('busyCall', (data) => {
+    const { to } = data;
+    const callerSocketId = userSocketMap[to];
+    if (callerSocketId) {
+      console.log(`Forwarding call busy to user ${to}`);
+      io.to(callerSocketId).emit('callBusy');
+    }
   });
 
   // Handle disconnection

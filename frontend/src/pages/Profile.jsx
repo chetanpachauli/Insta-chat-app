@@ -703,7 +703,7 @@ const Profile = () => {
 
       {/* Profile Info */}
       <div className="p-4 mt-4 card">
-        <div className="flex items-start gap-6 mb-6">
+        <div className="flex items-start gap-4 md:gap-6 mb-4 md:mb-6">
           {/* Profile Picture */}
           <div className="relative shrink-0">
             <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-brand p-[2px]">
@@ -741,6 +741,22 @@ const Profile = () => {
               )}
             </div>
 
+            {/* Stats Row - Desktop */}
+            <div className="hidden md:flex gap-6 my-4">
+              <div>
+                <span className="font-bold text-white mr-1">{profile?.posts?.length || 0}</span>
+                <span className="text-sm text-dark-300">posts</span>
+              </div>
+              <div>
+                <span className="font-bold text-white mr-1">{profile?.followers?.length || 0}</span>
+                <span className="text-sm text-dark-300">followers</span>
+              </div>
+              <div>
+                <span className="font-bold text-white mr-1">{profile?.following?.length || 0}</span>
+                <span className="text-sm text-dark-300">following</span>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {isOwnProfile ? (
                 <button onClick={() => setEditing(true)} className="btn-ghost flex-1 text-sm">
@@ -759,6 +775,22 @@ const Profile = () => {
                 />
               )}
             </div>
+          </div>
+        </div>
+        
+        {/* Stats Row - Mobile */}
+        <div className="flex md:hidden justify-around py-3 border-t border-b border-dark-700/50 my-2 text-center text-xs font-semibold text-dark-300">
+          <div>
+            <span className="block text-white text-base font-bold">{profile?.posts?.length || 0}</span>
+            <span>posts</span>
+          </div>
+          <div>
+            <span className="block text-white text-base font-bold">{profile?.followers?.length || 0}</span>
+            <span>followers</span>
+          </div>
+          <div>
+            <span className="block text-white text-base font-bold">{profile?.following?.length || 0}</span>
+            <span>following</span>
           </div>
         </div>
 

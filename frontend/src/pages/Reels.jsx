@@ -13,7 +13,8 @@ import {
   SpeakerXMarkIcon,
   MusicalNoteIcon,
   PlusIcon,
-  PlayIcon
+  PlayIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid } from '@heroicons/react/24/solid';
 import { motion } from 'framer-motion';
@@ -119,6 +120,7 @@ export default function Reels() {
   const navigate = useNavigate();
   const { user: currentUser } = useContext(AuthContext);
   const [sharePost, setSharePost] = useState(null);
+  const [activeCommentPost, setActiveCommentPost] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState({});
@@ -134,6 +136,18 @@ export default function Reels() {
   const lastTap = useRef(0);
   const isMounted = useRef(true);
   const cacheKey = 'reels_cache';
+
+  const handleCommentAdded = useCallback((postId, newComment) => {
+    setPosts(prev => prev.map(p => {
+      if (p._id === postId) {
+        return {
+          ...p,
+          comments: [...(p.comments || []), newComment]
+        };
+      }
+      return p;
+    }));
+  }, []);
 
   const handleTimeUpdate = useCallback((idx, ct, dur, isBuffering) => {
     setVideoProgress(prev => ({ ...prev, [idx]: { currentTime: ct, duration: dur } }));
@@ -312,7 +326,7 @@ export default function Reels() {
   }
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-114px)] md:h-screen bg-black text-white flex flex-col overflow-hidden">
       {/* Top bar */}
       <div className="absolute top-0 w-full z-50 px-4 py-3 md:p-6 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
         <div className="flex items-center gap-3">
@@ -336,7 +350,7 @@ export default function Reels() {
           const isBuffering = bufferingStates[index];
 
           return (
-            <div key={post._id} className="h-dvh w-full relative snap-start flex items-center justify-center bg-black">
+            <div key={post._id} className="h-[calc(100dvh-114px)] md:h-screen w-full relative snap-start flex items-center justify-center bg-black">
               <div
                 className="relative w-full h-full md:max-w-[450px] md:rounded-[2.5rem] md:overflow-hidden md:border md:border-dark-700 md:shadow-2xl select-none bg-black"
                 onClick={() => handleDoubleTap(post._id)}
@@ -384,7 +398,7 @@ export default function Reels() {
                 </div>
 
                 {/* Action buttons - right */}
-                <div className="absolute right-2 md:right-3 bottom-28 md:bottom-32 flex flex-col items-center gap-4 md:gap-6 z-30">
+                <div className="absolute right-2 md:right-4 bottom-20 md:bottom-28 flex flex-col items-center gap-4 md:gap-6 z-30">
                   <div className="flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
                     <motion.button whileTap={{ scale: 0.8 }} onClick={() => handleLike(post._id)}>
                       {liked[post._id]
@@ -394,7 +408,11 @@ export default function Reels() {
                     <span className="text-[11px] font-bold mt-0.5 drop-shadow-md">{likesCount[post._id] || 0}</span>
                   </div>
 
-                  <motion.button whileTap={{ scale: 0.8 }} className="flex flex-col items-center" onClick={(e) => { e.stopPropagation(); navigate(`/p/${post._id}`); }}>
+                  <motion.button 
+                    whileTap={{ scale: 0.8 }} 
+                    className="flex flex-col items-center" 
+                    onClick={(e) => { e.stopPropagation(); setActiveCommentPost(post); }}
+                  >
                     <ChatBubbleLeftRightIcon className="w-7 h-7 md:w-9 md:h-9 text-white drop-shadow-lg" />
                     <span className="text-[11px] font-bold mt-0.5">{post.comments?.length || 0}</span>
                   </motion.button>
@@ -414,7 +432,7 @@ export default function Reels() {
                 </div>
 
                 {/* Bottom info */}
-                <div className="absolute bottom-0 left-0 right-0 px-3 pb-4 pt-16 md:p-6 md:pb-8 bg-gradient-to-t from-black/95 via-black/50 to-transparent z-20">
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 md:pb-8 pt-16 md:p-6 bg-gradient-to-t from-black/95 via-black/45 to-transparent z-20">
                   <div className="flex items-center gap-2 mb-2">
                     <img
                       src={post.author?.profilePic || '/default-avatar.png'}
@@ -456,6 +474,144 @@ export default function Reels() {
         })}
       </div>
       <ShareModal isOpen={!!sharePost} onClose={() => setSharePost(null)} post={sharePost} />
+      
+      {activeCommentPost && (
+        <ReelCommentsSheet
+          post={activeCommentPost}
+          onClose={() => setActiveCommentPost(null)}
+          currentUser={currentUser}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
+    </div>
+  );
+}
+
+// Reel comments bottom sheet component
+function ReelCommentsSheet({ post, onClose, currentUser, onCommentAdded }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const commentsEndRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchComments = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`/api/posts/${post._id}`, { withCredentials: true });
+        if (active) {
+          setComments(res.data.comments || []);
+        }
+      } catch (err) {
+        toast.error('Failed to load comments');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchComments();
+    return () => { active = false; };
+  }, [post._id]);
+
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [comments.length]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await axios.post(`/api/posts/${post._id}/comment`, { text: newComment }, { withCredentials: true });
+      const addedComment = res.data.comment;
+      
+      setComments(prev => [...prev, addedComment]);
+      setNewComment('');
+      
+      if (onCommentAdded) {
+        onCommentAdded(post._id, addedComment);
+      }
+      toast.success('Comment added');
+    } catch (err) {
+      toast.error('Failed to post comment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div 
+        className="w-full md:max-w-[450px] bg-dark-900 border-t border-dark-700/50 rounded-t-3xl h-[65vh] flex flex-col overflow-hidden text-white relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-12 h-1 bg-dark-600 rounded-full mx-auto my-3 shrink-0" />
+        
+        <div className="flex items-center justify-between px-4 pb-3 border-b border-dark-700/50 shrink-0">
+          <span className="text-sm font-semibold mx-auto">Comments</span>
+          <button onClick={onClose} className="btn-icon p-1 text-dark-300 hover:text-white absolute right-4">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : comments.length === 0 ? (
+            <div className="text-center text-dark-400 py-16 text-sm">
+              No comments yet. Start the conversation!
+            </div>
+          ) : (
+            comments.map(c => {
+              const username = c.author?.username || 'user';
+              const profilePic = c.author?.profilePic;
+              const text = c.text || '';
+              const date = c.createdAt ? new Date(c.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+              return (
+                <div key={c._id} className="flex gap-3 text-sm items-start animate-slide-up">
+                  <img
+                    src={profilePic || '/default-avatar.png'}
+                    alt={username}
+                    className="w-8 h-8 rounded-full object-cover shrink-0"
+                    onError={(e) => { e.target.src = '/default-avatar.png'; }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="font-semibold text-xs text-white">{username}</span>
+                      <span className="text-xs text-dark-400 text-[10px]">{date}</span>
+                    </div>
+                    <p className="text-dark-200 mt-1 break-words leading-relaxed text-xs">{text}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={commentsEndRef} />
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-3 border-t border-dark-700/50 bg-dark-900 flex gap-2 items-center shrink-0">
+          <input
+            type="text"
+            placeholder="Add a comment..."
+            className="flex-1 bg-dark-800 border border-dark-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500/50 text-white"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+          />
+          <button 
+            type="submit" 
+            disabled={!newComment.trim() || isSubmitting}
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+              newComment.trim() ? 'bg-brand-500 text-white' : 'bg-dark-800 text-dark-500 cursor-not-allowed'
+            }`}
+          >
+            <PaperAirplaneIcon className="w-4 h-4 -rotate-45" />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

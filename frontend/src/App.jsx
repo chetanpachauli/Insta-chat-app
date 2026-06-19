@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import AuthProvider, { AuthContext } from './context/AuthContext';
 import ChatProvider from './context/ChatContext';
+import { CallProvider } from './context/CallContext';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 
@@ -82,20 +83,22 @@ function AppWithProviders() {
   const content = (
     <AuthProvider>
       <ChatProvider>
-        <ConfirmProvider>
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              style: {
-                background: '#18181b',
-                color: '#fff',
-                border: '1px solid #27272a',
-                borderRadius: '12px',
-              },
-            }}
-          />
-          <AppRoutes />
-        </ConfirmProvider>
+        <CallProvider>
+          <ConfirmProvider>
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                style: {
+                  background: '#18181b',
+                  color: '#fff',
+                  border: '1px solid #27272a',
+                  borderRadius: '12px',
+                },
+              }}
+            />
+            <AppRoutes />
+          </ConfirmProvider>
+        </CallProvider>
       </ChatProvider>
     </AuthProvider>
   );

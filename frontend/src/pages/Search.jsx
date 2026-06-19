@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import Avatar from '../components/Avatar'
 import { Link, useNavigate } from 'react-router-dom'
-import { MagnifyingGlassIcon, HeartIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, HeartIcon, ChatBubbleLeftRightIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 
 export default function Search() {
@@ -14,12 +14,33 @@ export default function Search() {
   const [selectedTag, setSelectedTag] = useState('')
 
   useEffect(() => {
-    if (!q) return setResults([])
+    if (!q) {
+      setResults([])
+      setSelectedTag('')
+      setTagResults([])
+      return
+    }
     const t = setTimeout(async () => {
       try {
-        const res = await axios.get(`/api/auth/search?query=${encodeURIComponent(q)}`)
-        setResults(res.data || [])
-      } catch (e) { setResults([]) }
+        if (q.startsWith('#')) {
+          const tag = q.slice(1);
+          if (tag.trim()) {
+            const res = await axios.get(`/api/hashtags/search/${encodeURIComponent(tag.trim())}`)
+            setTagResults(res.data || [])
+            setSelectedTag(tag.trim())
+          } else {
+            setTagResults([])
+            setSelectedTag('')
+          }
+        } else {
+          const res = await axios.get(`/api/auth/search?query=${encodeURIComponent(q)}`)
+          setResults(res.data || [])
+          setSelectedTag('')
+        }
+      } catch (e) { 
+        setResults([]) 
+        setTagResults([])
+      }
     }, 300)
     return () => clearTimeout(t)
   }, [q])
@@ -61,9 +82,17 @@ export default function Search() {
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
-            placeholder="Search users"
-            className="w-full pl-10 pr-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all text-sm"
+            placeholder="Search users or #hashtags"
+            className="w-full pl-10 pr-10 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all text-sm"
           />
+          {q && (
+            <button
+              onClick={() => { setQ(''); setSelectedTag(''); setTagResults([]); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white p-0.5 rounded-full hover:bg-dark-700 transition-colors"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {!q && !selectedTag && trendingTags.length > 0 && (

@@ -594,6 +594,10 @@ const ChatProvider = ({ children }) => {
     }
   }, []);
 
+  const getSocket = useCallback(() => {
+    return socketRef.current;
+  }, []);
+
   const contextValue = useMemo(() => ({
     // State
     isConnected,
@@ -607,6 +611,7 @@ const ChatProvider = ({ children }) => {
     connectionStatus,
     
     // Actions
+    getSocket,
     sendMessage,
     fetchMessages,
     startTyping,
@@ -626,6 +631,7 @@ const ChatProvider = ({ children }) => {
     isLoading,
     error,
     connectionStatus,
+    getSocket,
     sendMessage,
     fetchMessages,
     startTyping,
