@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import StoryViewer from './StoryViewer';
 
@@ -11,6 +12,7 @@ const getUserId = (u) => u?.id || u?._id;
 export default function StoriesBar({ currentUser, onStoryCreated }) {
   const [storyGroups, setStoryGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [viewingIndex, setViewingIndex] = useState(null);
   const [closeFriendsOnly, setCloseFriendsOnly] = useState(false);
   const fileRef = useRef(null);
@@ -33,10 +35,11 @@ export default function StoriesBar({ currentUser, onStoryCreated }) {
     if (!file) return;
 
     if (!cloudName || !uploadPreset) {
-      console.error('Cloudinary not configured — missing env vars');
+      toast.error('Story upload not configured');
       return;
     }
 
+    setCreating(true);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
@@ -52,12 +55,15 @@ export default function StoriesBar({ currentUser, onStoryCreated }) {
         image: uploadData.secure_url,
         closeFriendsOnly
       }, { withCredentials: true });
+      toast.success('Story created!');
       setCloseFriendsOnly(false);
       fetchStories();
       if (onStoryCreated) onStoryCreated();
     } catch (err) {
       console.error('Failed to create story:', err);
+      toast.error('Failed to create story');
     }
+    setCreating(false);
     e.target.value = '';
   };
 
@@ -81,9 +87,18 @@ export default function StoriesBar({ currentUser, onStoryCreated }) {
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <button
             onClick={() => fileRef.current?.click()}
-            className={`w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center relative ${closeFriendsOnly ? 'border-emerald-500 bg-emerald-500/10' : 'border-brand-500'}`}
+            disabled={creating}
+            className={`w-16 h-16 rounded-full border-2 border-dashed flex items-center justify-center relative transition-all ${
+              creating
+                ? 'border-brand-500/50 bg-dark-800'
+                : closeFriendsOnly ? 'border-emerald-500 bg-emerald-500/10' : 'border-brand-500'
+            }`}
           >
-            <PlusIcon className={`w-6 h-6 ${closeFriendsOnly ? 'text-emerald-500' : 'text-brand-500'}`} />
+            {creating ? (
+              <span className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <PlusIcon className={`w-6 h-6 ${closeFriendsOnly ? 'text-emerald-500' : 'text-brand-500'}`} />
+            )}
             {closeFriendsOnly && (
               <span className="absolute -bottom-1 -right-1 text-[8px] bg-emerald-500 text-white rounded-full w-4 h-4 flex items-center justify-center font-bold">CF</span>
             )}
@@ -92,6 +107,7 @@ export default function StoriesBar({ currentUser, onStoryCreated }) {
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); setCloseFriendsOnly(!closeFriendsOnly); }}
+              disabled={creating}
               className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors ${closeFriendsOnly ? 'bg-emerald-500/20 text-emerald-400' : 'text-dark-500 hover:text-dark-300'}`}
               title={closeFriendsOnly ? 'Close friends only' : 'Public story'}
             >

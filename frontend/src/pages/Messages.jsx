@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import ChatContainer from '../components/ChatContainer';
-import { ArrowLeftIcon, WifiIcon, MagnifyingGlassIcon, UsersIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, WifiIcon, MagnifyingGlassIcon, UsersIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import GroupChatModal from '../components/GroupChatModal';
 
 const useMediaQuery = (query) => {
@@ -61,17 +61,6 @@ const Messages = () => {
     return <div className="h-screen bg-dark-900 text-white flex items-center justify-center">Loading...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="h-screen bg-dark-900 text-white flex items-center justify-center">
-        <div className="text-center p-4">
-          <p className="text-red-400 mb-4">{error}</p>
-          <button onClick={() => fetchSidebarUsers?.()} className="btn-primary">Retry</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen w-full bg-dark-900 text-white flex flex-col overflow-hidden pb-16 md:pb-0">
       <div className="flex-1 flex flex-col p-2 md:p-3 overflow-hidden">
@@ -104,6 +93,20 @@ const Messages = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
+              {error && (
+                <div className="mx-2 mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-2">
+                  <ExclamationTriangleIcon className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-red-400">{error}</p>
+                    <button
+                      onClick={() => fetchSidebarUsers?.()}
+                      className="text-xs text-red-300 hover:text-red-200 underline mt-1"
+                    >
+                      Tap to retry
+                    </button>
+                  </div>
+                </div>
+              )}
               {showLoading ? (
                 <div className="p-8 text-center">
                   <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />

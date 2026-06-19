@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { XMarkIcon, TrashIcon, EyeIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, TrashIcon, EyeIcon, PaperAirplaneIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useConfirm } from '../hooks/useConfirm';
 import { toast } from 'react-hot-toast';
@@ -18,6 +18,7 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
   const [showViews, setShowViews] = useState(false);
   const [viewers, setViewers] = useState([]);
   const [replyText, setReplyText] = useState('');
+  const [imageLoaded, setImageLoaded] = useState(false);
   const isOwnStory = String(currentGroup?.user?._id || currentGroup?.user?.id) === String(currentUserId);
 
   const markViewed = useCallback(async (storyId) => {
@@ -49,7 +50,7 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
   }, [storyIndex, groupIndex, storyGroups]);
 
   useEffect(() => {
-    if (currentStory) markViewed(currentStory._id);
+    if (currentStory) { markViewed(currentStory._id); setImageLoaded(false); }
   }, [currentStory, markViewed]);
 
   useEffect(() => {
@@ -174,11 +175,18 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
         </div>
 
         {/* Story image */}
+        {!imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <PhotoIcon className="w-12 h-12 text-dark-600 animate-pulse" />
+          </div>
+        )}
         <img
           src={currentStory.image}
-          className="w-full h-full object-contain"
+          className={`w-full h-full object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           alt="story"
           loading="lazy"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
         />
 
         {/* Views modal */}
