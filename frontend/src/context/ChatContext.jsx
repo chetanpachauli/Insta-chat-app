@@ -218,6 +218,11 @@ const ChatProvider = ({ children }) => {
       setConnectionStatus('connected');
       connectionAttemptRef.current = 0;
       
+      // Register user in socket map so calling/online presence works
+      if (userIdRef.current) {
+        socket.emit('addUser', { userId: userIdRef.current });
+      }
+
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
