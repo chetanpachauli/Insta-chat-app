@@ -213,16 +213,18 @@ export default function Reels() {
     const initialMuted = {};
 
     validPosts.forEach((post, idx) => {
+      const currentUserId = currentUser?._id || currentUser?.id;
       initialLiked[post._id] = Array.isArray(post.likes) && post.likes.some(id =>
-        id && currentUser?._id && String(id) === String(currentUser._id)
+        id && currentUserId && String(id) === String(currentUserId)
       );
       initialSaved[post._id] = Array.isArray(post.savedBy) && post.savedBy.some(id =>
-        id && currentUser?._id && String(id) === String(currentUser._id)
+        id && currentUserId && String(id) === String(currentUserId)
       );
       initialCounts[post._id] = post.likesCount || post.likes?.length || 0;
-      initialFollowing[post._id] = post.author?.followers?.some(id =>
-        id && currentUser?._id && String(id) === String(currentUser._id)
-      ) || false;
+      initialFollowing[post._id] = post.author?.followers?.some(follower => {
+        const fId = typeof follower === 'string' ? follower : (follower?._id || follower?.id);
+        return fId && currentUserId && String(fId) === String(currentUserId);
+      }) || false;
       initialMuted[idx] = true;
     });
 
@@ -447,7 +449,7 @@ export default function Reels() {
                     >
                       {post.author?.username || 'user'}
                     </span>
-                    {post.author?._id !== currentUser?._id && (
+                    {String(post.author?._id || post.author?.id) !== String(currentUser?._id || currentUser?.id) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleFollow(post.author?._id, post._id); }}
                         className={`text-[11px] md:text-xs font-bold px-3 py-1 rounded-full transition-colors shrink-0 ${

@@ -156,9 +156,9 @@ export default function Search() {
           {!selectedTag && (results.length === 0 && q ? (
             <div className="text-center text-dark-400 py-8">User not found</div>
           ) : (
-            results.map(u => (
+            results.map((u, idx) => (
               <Link
-                key={u.id}
+                key={u._id || u.id || idx}
                 to={`/profile/${u.username}`}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-dark-800/50 transition-colors"
               >

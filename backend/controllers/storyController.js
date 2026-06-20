@@ -26,33 +26,36 @@ exports.getStories = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const followingIds = [...user.following, userId];
-
     const allStories = await Story.find({
-      author: { $in: followingIds },
       $or: [
         { expiresAt: { $gt: new Date() } },
         { expiresAt: { $exists: false } }
       ]
     })
-      .populate('author', 'username profilePic')
+      .populate('author', 'username profilePic closeFriends')
       .sort('-createdAt');
 
     // Filter close friends stories
-    const closeFriendIds = (user.closeFriends || []).map(id => String(id));
     const stories = allStories.filter(s => {
       if (s.closeFriendsOnly) {
-        return String(s.author._id) === String(userId) || closeFriendIds.includes(String(s.author._id));
+        // Logged in user can view if they are the author or are in the author's close friends list
+        const authorCloseFriends = (s.author?.closeFriends || []).map(id => String(id));
+        return String(s.author?._id || s.author?.id) === String(userId) || authorCloseFriends.includes(String(userId));
       }
       return true;
     });
 
     const grouped = {};
     stories.forEach(s => {
+      if (!s.author) return;
       const authorId = s.author._id.toString();
       if (!grouped[authorId]) {
         grouped[authorId] = {
-          user: s.author,
+          user: {
+            _id: s.author._id,
+            username: s.author.username,
+            profilePic: s.author.profilePic
+          },
           stories: []
         };
       }

@@ -112,7 +112,7 @@ const sounds = new SoundGenerator();
 
 export const CallProvider = ({ children }) => {
   const { user } = useAuth();
-  const { getSocket, isConnected, sendMessage } = useContext(ChatContext);
+  const { getSocket, isConnected, sendMessage, onlineUsers } = useContext(ChatContext);
 
   const [callState, setCallState] = useState(null); // 'dialing' | 'incoming' | 'connecting' | 'connected' | null
   const [callType, setCallType] = useState(null); // 'voice' | 'video' | null
@@ -1084,6 +1084,7 @@ export const CallProvider = ({ children }) => {
           groupName={groupName}
           groupPeers={groupPeers}
           user={user}
+          onlineUsers={onlineUsers}
         />
       )}
     </CallContext.Provider>
@@ -1239,7 +1240,8 @@ const ActiveCallOverlay = ({
   isGroupCall,
   groupName,
   groupPeers,
-  user
+  user,
+  onlineUsers
 }) => {
   const avatarText = partnerInfo?.username ? partnerInfo.username[0].toUpperCase() : 'U';
   const showVideoGrid = callType === 'video';
@@ -1372,7 +1374,12 @@ const ActiveCallOverlay = ({
                       </div>
                     )}
                     <p className="text-zinc-400 font-medium">
-                      {callState === 'dialing' ? 'Calling...' : callState === 'connecting' ? 'Connecting...' : 'Waiting for video stream...'}
+                      {callState === 'dialing' ? (
+                        onlineUsers && (partnerInfo?._id || partnerInfo?.id || activeChatIdRef.current) && 
+                        onlineUsers.includes(String(partnerInfo?._id || partnerInfo?.id || activeChatIdRef.current))
+                          ? 'Ringing...' 
+                          : 'Calling...'
+                      ) : callState === 'connecting' ? 'Connecting...' : 'Waiting for video stream...'}
                     </p>
                   </div>
                 )}
@@ -1423,7 +1430,12 @@ const ActiveCallOverlay = ({
               <div className="mt-4">
                 <h3 className="text-2xl font-bold truncate tracking-wide">{partnerInfo?.username || 'Unknown'}</h3>
                 <p className="text-sm mt-2 text-zinc-400 font-medium capitalize animate-pulse-soft">
-                  {callState === 'dialing' ? 'dialing...' : callState === 'connecting' ? 'connecting...' : 'connected'}
+                  {callState === 'dialing' ? (
+                    onlineUsers && (partnerInfo?._id || partnerInfo?.id || activeChatIdRef.current) && 
+                    onlineUsers.includes(String(partnerInfo?._id || partnerInfo?.id || activeChatIdRef.current))
+                      ? 'ringing...' 
+                      : 'calling...'
+                  ) : callState === 'connecting' ? 'connecting...' : 'connected'}
                 </p>
               </div>
             </div>

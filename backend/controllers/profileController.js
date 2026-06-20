@@ -11,10 +11,18 @@ exports.getProfile = async (req, res) => {
     
     let user;
     if (isObjectId) {
-      user = await User.findById(id).select('-password -refreshTokens').populate('posts');
+      user = await User.findById(id)
+        .select('-password -refreshTokens')
+        .populate('posts')
+        .populate('followers', 'username name profilePic bio')
+        .populate('following', 'username name profilePic bio');
     } else {
       // If not a valid ObjectId, search by username
-      user = await User.findOne({ username: id }).select('-password -refreshTokens').populate('posts');
+      user = await User.findOne({ username: id })
+        .select('-password -refreshTokens')
+        .populate('posts')
+        .populate('followers', 'username name profilePic bio')
+        .populate('following', 'username name profilePic bio');
     }
     
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -36,7 +44,11 @@ exports.getProfile = async (req, res) => {
 // Get my profile
 exports.getMyProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password -refreshTokens').populate('posts')
+    const user = await User.findById(req.user.id)
+      .select('-password -refreshTokens')
+      .populate('posts')
+      .populate('followers', 'username name profilePic bio')
+      .populate('following', 'username name profilePic bio');
     if (!user) return res.status(404).json({ message: 'User not found' })
     const profile = user.toObject()
     profile.followersCount = (user.followers || []).length

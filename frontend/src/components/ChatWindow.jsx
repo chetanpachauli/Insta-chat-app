@@ -116,6 +116,7 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
   const containerRef = useRef(null);
   const isFetchingRef = useRef(false);
   const prevChatIdRef = useRef(null);
+  const [showEncryptionModal, setShowEncryptionModal] = useState(false);
 
   const fetchChatMessages = useCallback(async () => {
     const chatId = selectedChat?._id;
@@ -277,6 +278,17 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
 
           {/* Messages */}
           <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+            {/* End-to-End Encryption Banner */}
+            <div className="bg-zinc-900/50 px-4 py-2 rounded-lg max-w-md mx-auto my-4 text-center text-balance text-xs text-zinc-400 border border-dark-700/20 shadow-sm">
+              <span>🔒 Messages and calls are end-to-end encrypted. No one outside of this chat, not even ChetanAI, can read or listen to them. </span>
+              <button 
+                onClick={() => setShowEncryptionModal(true)} 
+                className="text-blue-400 cursor-pointer underline hover:text-blue-300 font-medium inline"
+              >
+                Learn more
+              </button>
+            </div>
+
             {msgs.map((m) => {
               const senderId = m.senderId?._id || m.senderId;
               const currentUserId = user?._id || user?.id;
@@ -385,6 +397,57 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
           <div className="border-t border-dark-700/50 bg-dark-800/30 backdrop-blur-sm p-3">
             <MessageInput />
           </div>
+
+          {/* Learn More Encryption Modal */}
+          {showEncryptionModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowEncryptionModal(false)}>
+              <div 
+                className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-[400px] overflow-hidden flex flex-col shadow-2xl animate-scale-in text-white"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="px-4 py-3 border-b border-dark-700/50 flex justify-between items-center bg-dark-900/40">
+                  <h3 className="font-bold text-sm tracking-wide flex items-center gap-1.5 text-brand-400">
+                    <span>🔒</span> Encryption Details
+                  </h3>
+                  <button 
+                    onClick={() => setShowEncryptionModal(false)} 
+                    className="text-dark-400 hover:text-white transition-colors p-1"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-5 space-y-4 text-xs leading-relaxed text-dark-200">
+                  <div className="flex gap-3 items-start">
+                    <span className="text-base shrink-0 mt-0.5">💬</span>
+                    <p>
+                      Your privacy is our priority. Every text message is encrypted locally on your device using industry-standard AES-256 before it ever hits the network.
+                    </p>
+                  </div>
+                  <div className="flex gap-3 items-start">
+                    <span className="text-base shrink-0 mt-0.5">📞</span>
+                    <p>
+                      All real-time video and voice communication is established via peer-to-peer WebRTC secure data streams, meaning audio and video data never pass through or get saved on our servers.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-3 border-t border-dark-700/50 bg-dark-900/20 flex justify-end">
+                  <button
+                    onClick={() => setShowEncryptionModal(false)}
+                    className="px-4 py-2 bg-dark-700 hover:bg-dark-600 active:scale-95 text-xs font-semibold rounded-lg text-white transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

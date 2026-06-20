@@ -30,48 +30,75 @@ import { ProfileSkeleton } from '../components/SkeletonLoaders';
 import EmptyState from '../components/EmptyState';
 
 // Follow Button Component with improved UX
-const FollowButton = ({ profile, onUpdate, setProfile }) => {
+const FollowButton = ({ profile, onUpdate, setProfile, initialIsFollowing }) => {
   const [loading, setLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const { user: me } = useContext(AuthContext);
 
   // Update follow status when profile or me changes
   useEffect(() => {
+    if (initialIsFollowing !== undefined) {
+      setIsFollowing(initialIsFollowing);
+      return;
+    }
     if (profile && profile.followers) {
-      const isUserFollowing = profile.followers.some(follower => 
-        typeof follower === 'string' ? 
-        follower === me?._id : 
-        follower._id === me?._id
-      );
+      const myId = me?.id || me?._id;
+      const isUserFollowing = profile.followers.some(follower => {
+        const fId = typeof follower === 'string' ? follower : (follower?._id || follower?.id);
+        return fId && myId && String(fId) === String(myId);
+      });
       setIsFollowing(isUserFollowing);
     }
-  }, [profile, me?._id]);
+  }, [profile, me?.id, me?._id, initialIsFollowing]);
 
   const toggleFollow = async () => {
     if (loading) return;
     setLoading(true);
     
+    const myId = me?.id || me?._id;
+    const myObj = {
+      _id: myId,
+      id: myId,
+      username: me?.username || 'user',
+      profilePic: me?.profilePic || '',
+      name: me?.name || me?.username || 'User'
+    };
+    
     try {
+      const targetUserId = profile._id || profile.id;
       if (isFollowing) {
-        console.log('Unfollowing user:', profile._id);
-        await api.post(`/profile/${profile._id}/unfollow`);
+        console.log('Unfollowing user:', targetUserId);
+        await api.post(`/profile/${targetUserId}/unfollow`);
         toast.success(`Unfollowed ${profile.username}`);
       } else {
-        await api.post(`/profile/${profile._id}/follow`);
+        await api.post(`/profile/${targetUserId}/follow`);
         console.log('Successfully followed user');
         toast.success(`Followed ${profile.username}`);
       }
       
       // Update the local state to reflect the change
-      setProfile(prev => ({
-        ...prev,
+      const updateData = {
         followers: isFollowing 
-          ? prev.followers.filter(id => id !== me._id)
-          : [...prev.followers, me._id],
+          ? (profile.followers || []).filter(follower => {
+              const fId = typeof follower === 'string' ? follower : (follower?._id || follower?.id);
+              return String(fId) !== String(myId);
+            })
+          : [...(profile.followers || []), myObj],
         followersCount: isFollowing 
-          ? prev.followersCount - 1 
-          : prev.followersCount + 1
-      }));
+          ? (profile.followersCount || (profile.followers || []).length || 1) - 1 
+          : (profile.followersCount || (profile.followers || []).length || 0) + 1
+      };
+
+      if (setProfile) {
+        setProfile(prev => ({
+          ...prev,
+          ...updateData
+        }));
+      }
+
+      if (onUpdate) {
+        onUpdate(updateData);
+      }
       
       // Update the isFollowing state
       setIsFollowing(!isFollowing);
@@ -445,6 +472,8 @@ const Profile = () => {
     following: [],
     posts: []
   });
+  const [myFollowingIds, setMyFollowingIds] = useState([]);
+  const [populatedUsers, setPopulatedUsers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('posts');
@@ -456,6 +485,75 @@ const Profile = () => {
     bio: '',
     profilePic: ''
   });
+  const [showListModal, setShowListModal] = useState(false);
+  const [listModalType, setListModalType] = useState('followers'); // 'followers' or 'following'
+
+  // Fetch logged in user's following list to show Follow/Unfollow accurately in modals
+  useEffect(() => {
+    const fetchMyFollowing = async () => {
+      try {
+        const res = await api.get('/profile/me');
+        if (res.data && res.data.following) {
+          const ids = res.data.following.map(u => String(u._id || u));
+          setMyFollowingIds(ids);
+        }
+      } catch (err) {
+        console.error('Error fetching my following list:', err);
+      }
+    };
+    if (me) {
+      fetchMyFollowing();
+    }
+  }, [me]);
+
+  // Fetch details of users inside followers/following modal if they are strings or incomplete
+  useEffect(() => {
+    if (!showListModal) return;
+
+    const list = listModalType === 'followers' 
+      ? (profile?.followers || []) 
+      : (profile?.following || []);
+
+    const fetchMissingUsers = async () => {
+      const missingIds = list
+        .map(u => {
+          if (typeof u === 'string') return u;
+          if (u && (u._id || u.id) && !u.username) return u._id || u.id;
+          return null;
+        })
+        .filter(id => id && !populatedUsers[id]);
+
+      if (missingIds.length === 0) return;
+
+      const newPopulated = { ...populatedUsers };
+      let changed = false;
+      await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const res = await api.get(`/profile/${id}`);
+            if (res.data) {
+              newPopulated[id] = res.data;
+              changed = true;
+            }
+          } catch (err) {
+            console.error(`Error fetching user details for ${id}:`, err);
+            newPopulated[id] = { _id: id, username: 'User', name: 'User', profilePic: '/default-avatar.png' };
+            changed = true;
+          }
+        })
+      );
+      if (changed) {
+        setPopulatedUsers(prev => ({ ...prev, ...newPopulated }));
+      }
+    };
+
+    fetchMissingUsers();
+  }, [showListModal, listModalType, profile?.followers, profile?.following]);
+
+  const handleOpenListModal = (type) => {
+    setListModalType(type);
+    setShowListModal(true);
+  };
   
   // Debug log
   console.log('Profile params:', { username, me });
@@ -688,12 +786,27 @@ const Profile = () => {
               </button>
               <FollowButton
                 profile={profile}
-                onUpdate={(updatedProfile) => setProfile(prev => ({
-                  ...prev,
-                  ...updatedProfile,
-                  followers: updatedProfile.followers || prev.followers,
-                  following: updatedProfile.following || prev.following
-                }))}
+                initialIsFollowing={myFollowingIds.includes(String(profile._id || profile.id))}
+                onUpdate={(updatedProfile) => {
+                  const targetId = String(profile._id || profile.id);
+                  const isNowFollowing = (updatedProfile.followers || []).some(f => {
+                    const fId = typeof f === 'string' ? f : (f._id || f.id);
+                    return String(fId) === String(me?.id || me?._id);
+                  });
+                  setMyFollowingIds(prev => {
+                    if (isNowFollowing) {
+                      return prev.includes(targetId) ? prev : [...prev, targetId];
+                    } else {
+                      return prev.filter(id => id !== targetId);
+                    }
+                  });
+                  setProfile(prev => ({
+                    ...prev,
+                    ...updatedProfile,
+                    followers: updatedProfile.followers || prev.followers,
+                    following: updatedProfile.following || prev.following
+                  }));
+                }}
                 setProfile={setProfile}
               />
             </div>
@@ -747,11 +860,11 @@ const Profile = () => {
                 <span className="font-bold text-white mr-1">{profile?.posts?.length || 0}</span>
                 <span className="text-sm text-dark-300">posts</span>
               </div>
-              <div>
+              <div className="cursor-pointer hover:underline" onClick={() => handleOpenListModal('followers')}>
                 <span className="font-bold text-white mr-1">{profile?.followers?.length || 0}</span>
                 <span className="text-sm text-dark-300">followers</span>
               </div>
-              <div>
+              <div className="cursor-pointer hover:underline" onClick={() => handleOpenListModal('following')}>
                 <span className="font-bold text-white mr-1">{profile?.following?.length || 0}</span>
                 <span className="text-sm text-dark-300">following</span>
               </div>
@@ -765,12 +878,27 @@ const Profile = () => {
               ) : (
                 <FollowButton
                   profile={profile}
-                  onUpdate={(updatedProfile) => setProfile(prev => ({
-                    ...prev,
-                    ...updatedProfile,
-                    followers: updatedProfile.followers || prev.followers,
-                    following: updatedProfile.following || prev.following
-                  }))}
+                  initialIsFollowing={myFollowingIds.includes(String(profile._id || profile.id))}
+                  onUpdate={(updatedProfile) => {
+                    const targetId = String(profile._id || profile.id);
+                    const isNowFollowing = (updatedProfile.followers || []).some(f => {
+                      const fId = typeof f === 'string' ? f : (f._id || f.id);
+                      return String(fId) === String(me?.id || me?._id);
+                    });
+                    setMyFollowingIds(prev => {
+                      if (isNowFollowing) {
+                        return prev.includes(targetId) ? prev : [...prev, targetId];
+                      } else {
+                        return prev.filter(id => id !== targetId);
+                      }
+                    });
+                    setProfile(prev => ({
+                      ...prev,
+                      ...updatedProfile,
+                      followers: updatedProfile.followers || prev.followers,
+                      following: updatedProfile.following || prev.following
+                    }));
+                  }}
                   setProfile={setProfile}
                 />
               )}
@@ -784,11 +912,11 @@ const Profile = () => {
             <span className="block text-white text-base font-bold">{profile?.posts?.length || 0}</span>
             <span>posts</span>
           </div>
-          <div>
+          <div className="cursor-pointer hover:underline" onClick={() => handleOpenListModal('followers')}>
             <span className="block text-white text-base font-bold">{profile?.followers?.length || 0}</span>
             <span>followers</span>
           </div>
-          <div>
+          <div className="cursor-pointer hover:underline" onClick={() => handleOpenListModal('following')}>
             <span className="block text-white text-base font-bold">{profile?.following?.length || 0}</span>
             <span>following</span>
           </div>
@@ -959,6 +1087,155 @@ const Profile = () => {
         user={profile}
         onSave={handleUpdateProfile}
       />
+
+      {/* Follow List Modal (Followers/Following) */}
+      <Transition appear show={showListModal} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setShowListModal(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-[400px] transform overflow-hidden rounded-2xl bg-dark-800 border border-dark-700/80 p-6 text-left align-middle shadow-2xl transition-all text-white flex flex-col h-[450px]">
+                  <Dialog.Title
+                    as="h3"
+                    className="text-base font-bold leading-6 text-white pb-3 border-b border-dark-700/50 flex justify-between items-center"
+                  >
+                    <span className="capitalize">{listModalType}</span>
+                    <button
+                      onClick={() => setShowListModal(false)}
+                      className="text-dark-400 hover:text-white transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </Dialog.Title>
+
+                  <div className="flex-1 overflow-y-auto mt-4 space-y-4 scrollbar-thin pr-1">
+                    {(() => {
+                      const list = listModalType === 'followers' 
+                        ? (profile?.followers || []) 
+                        : (profile?.following || []);
+
+                      if (list.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                            <span className="text-3xl mb-2">👥</span>
+                            <p className="text-sm text-dark-400">No {listModalType} yet</p>
+                          </div>
+                        );
+                      }
+
+                      return list.map(u => {
+                        const targetId = typeof u === 'string' ? u : (u?._id || u?.id);
+                        const userObj = (typeof u === 'string' || !u?.username)
+                          ? (populatedUsers[targetId] || { _id: targetId, username: 'Loading...', isPlaceholder: true })
+                          : u;
+                        const isMe = String(userObj._id || userObj.id) === String(me?._id || me?.id);
+                        const isPlaceholder = userObj.isPlaceholder;
+                        
+                        return (
+                          <div key={userObj._id || userObj.id} className={`flex items-center justify-between gap-3 animate-fade-in ${isPlaceholder ? 'opacity-60 pointer-events-none' : ''}`}>
+                            <div 
+                              className="flex items-center gap-3 cursor-pointer min-w-0 flex-1"
+                              onClick={() => {
+                                if (isPlaceholder) return;
+                                setShowListModal(false);
+                                navigate(`/profile/${userObj.username}`);
+                              }}
+                            >
+                              <img
+                                src={userObj.profilePic || '/default-avatar.png'}
+                                className="w-10 h-10 rounded-full object-cover border border-dark-700 shrink-0"
+                                alt={userObj.username}
+                                onError={(e) => { e.target.src = '/default-avatar.png'; }}
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold truncate text-white hover:underline">
+                                  {userObj.username}
+                                </p>
+                                <p className="text-xs text-dark-400 truncate mt-0.5">{userObj.name || userObj.bio}</p>
+                              </div>
+                            </div>
+
+                            {!isMe && (
+                              <div className="shrink-0 w-24">
+                                <FollowButton
+                                  profile={userObj}
+                                  initialIsFollowing={myFollowingIds.includes(String(userObj._id || userObj.id))}
+                                  onUpdate={(updatedData) => {
+                                    const targetId = String(userObj._id || userObj.id);
+                                    const isNowFollowing = (updatedData.followers || []).some(f => {
+                                      const fId = typeof f === 'string' ? f : (f._id || f.id);
+                                      return String(fId) === String(me?.id || me?._id);
+                                    });
+                                    
+                                    setMyFollowingIds(prev => {
+                                      if (isNowFollowing) {
+                                        return prev.includes(targetId) ? prev : [...prev, targetId];
+                                      } else {
+                                        return prev.filter(id => id !== targetId);
+                                      }
+                                    });
+
+                                    if (isOwnProfile) {
+                                      setProfile(prev => {
+                                        let updatedFollowing = prev.following || [];
+                                        if (isNowFollowing) {
+                                          if (!updatedFollowing.some(x => String(x._id || x) === targetId)) {
+                                            updatedFollowing = [...updatedFollowing, userObj];
+                                          }
+                                        } else {
+                                          updatedFollowing = updatedFollowing.filter(x => String(x._id || x) !== targetId);
+                                        }
+                                        return {
+                                          ...prev,
+                                          following: updatedFollowing
+                                        };
+                                      });
+                                    } else {
+                                      if (String(profile._id || profile.id) === targetId) {
+                                        setProfile(prev => ({
+                                          ...prev,
+                                          ...updatedData
+                                        }));
+                                      }
+                                    }
+                                  }}
+                                  setProfile={undefined}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 };

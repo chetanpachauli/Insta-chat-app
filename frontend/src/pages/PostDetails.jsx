@@ -144,7 +144,7 @@ const PostDetails = () => {
               {post?.author?.username}
             </span>
           </div>
-          {post?.author?._id === currentUser?._id ? (
+          {String(post?.author?._id || post?.author?.id) === String(currentUser?._id || currentUser?.id) ? (
             <button onClick={handleDelete} disabled={isDeleting} className="btn-icon text-red-400">
               {isDeleting ? <span className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin block" /> : <TrashIcon className="w-5 h-5" />}
             </button>
