@@ -10,13 +10,30 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache navigation requests (HTML pages), never API/XHR/fetch calls
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      caches.match(event.request).then((response) => response || fetch(event.request))
-    );
-    return;
+  // Only intercept GET requests
+  if (event.request.method !== 'GET') return;
+
+  try {
+    const url = new URL(event.request.url);
+
+    // Bypass service worker entirely for API requests or cross-origin URLs
+    if (url.pathname.startsWith('/api') || url.hostname !== self.location.hostname) {
+      return;
+    }
+
+    // Handle navigation requests (HTML pages)
+    if (event.request.mode === 'navigate') {
+      event.respondWith(
+        caches.match(event.request).then((response) => response || fetch(event.request))
+      );
+    } 
+    // Handle local main index assets
+    else if (urlsToCache.includes(url.pathname)) {
+      event.respondWith(
+        caches.match(event.request).then((response) => response || fetch(event.request))
+      );
+    }
+  } catch (e) {
+    // Fail-safe
   }
-  // Let all other requests (API, images, etc.) pass through normally
-  event.respondWith(fetch(event.request));
 });

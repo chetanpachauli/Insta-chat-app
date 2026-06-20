@@ -114,7 +114,7 @@ export const CallProvider = ({ children }) => {
   const { user } = useAuth();
   const { getSocket, isConnected, sendMessage } = useContext(ChatContext);
 
-  const [callState, setCallState] = useState(null); // 'dialing' | 'incoming' | 'connecting' | 'connected' | 'callEnded' | null
+  const [callState, setCallState] = useState(null); // 'dialing' | 'incoming' | 'connecting' | 'connected' | null
   const [callType, setCallType] = useState(null); // 'voice' | 'video' | null
   const [callerInfo, setCallerInfo] = useState(null);
   const [receiverInfo, setReceiverInfo] = useState(null);
@@ -734,10 +734,9 @@ export const CallProvider = ({ children }) => {
     };
 
     const handleCallOffline = () => {
-      // Don't immediately cut — show "User is offline" briefly then end gracefully
-      setCallState('callEnded');
-      toast.error(`${callTypeRef.current === 'video' ? 'Video' : 'Voice'} call failed — User is offline`);
-      setTimeout(() => resetCallState(), 2000);
+      // Don't cut immediately — the 30-second calling timeout in startCall will handle it
+      // and show "No answer" / missed call after the full duration
+      console.log('User offline - waiting 30s timeout for finalization');
     };
 
     // --- Group Call Handlers ---
@@ -1065,11 +1064,11 @@ export const CallProvider = ({ children }) => {
         />
       )}
 
-      {(callState === 'dialing' || callState === 'connecting' || callState === 'connected' || callState === 'callEnded') && (
+      {(callState === 'dialing' || callState === 'connecting' || callState === 'connected') && (
         <ActiveCallOverlay
           callState={callState}
           callType={callType}
-          partnerInfo={callState === 'dialing' || callState === 'callEnded' ? receiverInfo : callerInfo}
+          partnerInfo={callState === 'dialing' ? receiverInfo : callerInfo}
           localStream={localStream}
           remoteStream={remoteStream}
           duration={duration}
@@ -1373,7 +1372,7 @@ const ActiveCallOverlay = ({
                       </div>
                     )}
                     <p className="text-zinc-400 font-medium">
-                      {callState === 'dialing' ? 'Calling...' : callState === 'connecting' ? 'Connecting...' : callState === 'callEnded' ? 'User is offline' : 'Waiting for video stream...'}
+                      {callState === 'dialing' ? 'Calling...' : callState === 'connecting' ? 'Connecting...' : 'Waiting for video stream...'}
                     </p>
                   </div>
                 )}
@@ -1424,7 +1423,7 @@ const ActiveCallOverlay = ({
               <div className="mt-4">
                 <h3 className="text-2xl font-bold truncate tracking-wide">{partnerInfo?.username || 'Unknown'}</h3>
                 <p className="text-sm mt-2 text-zinc-400 font-medium capitalize animate-pulse-soft">
-                  {callState === 'dialing' ? 'dialing...' : callState === 'connecting' ? 'connecting...' : callState === 'callEnded' ? 'user offline' : 'connected'}
+                  {callState === 'dialing' ? 'dialing...' : callState === 'connecting' ? 'connecting...' : 'connected'}
                 </p>
               </div>
             </div>
