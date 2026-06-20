@@ -4,13 +4,16 @@ const User = require('../models/User');
 exports.createStory = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { image, closeFriendsOnly } = req.body;
+    const { image, closeFriendsOnly, songName, songArtist, songUrl } = req.body;
     if (!image) return res.status(400).json({ message: 'Image is required' });
 
     const story = await Story.create({
       author: userId,
       image,
       closeFriendsOnly: closeFriendsOnly || false,
+      songName,
+      songArtist,
+      songUrl,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
     res.status(201).json(story);

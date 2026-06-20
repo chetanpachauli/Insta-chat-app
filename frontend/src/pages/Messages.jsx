@@ -62,7 +62,7 @@ const Messages = () => {
   }
 
   return (
-    <div className="h-screen w-full bg-dark-900 text-white flex flex-col overflow-hidden pb-16 md:pb-0">
+    <div className="h-[calc(100dvh-60px)] md:h-screen w-full bg-dark-900 text-white flex flex-col overflow-hidden">
       <div className="flex-1 flex flex-col p-2 md:p-3 overflow-hidden">
         <div className="flex-1 flex gap-2 md:gap-3 overflow-hidden">
           {/* Sidebar */}

@@ -8,7 +8,8 @@ import ThreeBackground from '../components/ThreeBackground'
 const ALLOWED_GOOGLE_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:4173',
-  'https://insta-chat-app-five.vercel.app'
+  'https://insta-chat-app-five.vercel.app',
+  'https://insta-chat-app-q97o.onrender.com'
 ];
 
 export default function Login() {

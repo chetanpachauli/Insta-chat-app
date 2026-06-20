@@ -3,13 +3,16 @@ import { XMarkIcon, TrashIcon, EyeIcon, PaperAirplaneIcon, PhotoIcon } from '@he
 import axios from 'axios';
 import { useConfirm } from '../hooks/useConfirm';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export default function StoryViewer({ storyGroups, initialIndex, currentUserId, onClose }) {
   const confirm = useConfirm();
+  const { user: loggedInUser } = useAuth();
   const [groupIndex, setGroupIndex] = useState(initialIndex);
   const [storyIndex, setStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const timerRef = useRef(null);
+  const audioRef = useRef(null);
   const DURATION = 5000;
 
   const currentGroup = storyGroups[groupIndex];
@@ -19,7 +22,10 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
   const [viewers, setViewers] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [imageLoaded, setImageLoaded] = useState(false);
-  const isOwnStory = String(currentGroup?.user?._id || currentGroup?.user?.id) === String(currentUserId);
+
+  const loggedInUserId = loggedInUser?.id || loggedInUser?._id;
+  const currentId = currentUserId || loggedInUserId;
+  const isOwnStory = String(currentGroup?.user?._id || currentGroup?.user?.id) === String(currentId);
 
   const markViewed = useCallback(async (storyId) => {
     try { await axios.post(`/api/stories/${storyId}/view`, {}, { withCredentials: true }); } catch (e) {}
@@ -75,6 +81,29 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (currentStory?.songUrl) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      audioRef.current = new Audio(currentStory.songUrl);
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.4;
+      audioRef.current.play().catch(e => console.log('Audio autoplay blocked:', e));
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [currentStory]);
 
   const fetchViews = async () => {
     if (!currentStory?._id) return;
@@ -133,10 +162,20 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
               alt=""
               loading="lazy"
             />
-            <span className="text-sm font-semibold text-white">{currentGroup?.user?.username}</span>
-            <span className="text-xs text-white/60">
-              {new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-white">{currentGroup?.user?.username}</span>
+                <span className="text-xs text-white/60">
+                  {new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              {currentStory?.songName && (
+                <div className="flex items-center gap-1 text-[10px] text-pink-400 font-semibold mt-0.5 animate-pulse">
+                  <span>🎵</span>
+                  <span>{currentStory.songName} - {currentStory.songArtist || 'Artist'}</span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {isOwnStory && (

@@ -10,7 +10,13 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => response || fetch(event.request))
-  );
+  // Only cache navigation requests (HTML pages), never API/XHR/fetch calls
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      caches.match(event.request).then((response) => response || fetch(event.request))
+    );
+    return;
+  }
+  // Let all other requests (API, images, etc.) pass through normally
+  event.respondWith(fetch(event.request));
 });

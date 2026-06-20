@@ -100,6 +100,9 @@ const io = new Server(server, {
 const userSocketMap = {}; // userId -> socketId
 const socketUserMap = {};  // socketId -> userId
 
+// Registry to track active group calling rooms: conversationId -> Array of { userId, socketId, username, profilePic }
+const activeGroupCalls = {};
+
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
   connections.add(socket.id);
@@ -281,15 +284,141 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Group Call signaling events
+  socket.on('joinGroupCall', (data) => {
+    const { conversationId, user } = data;
+    if (!conversationId || !user) return;
+    
+    const callRoomName = `group-call-${conversationId}`;
+    socket.join(callRoomName);
+    
+    if (!activeGroupCalls[conversationId]) {
+      activeGroupCalls[conversationId] = [];
+    }
+    
+    // Add participant if not already present
+    if (!activeGroupCalls[conversationId].some(p => p.socketId === socket.id)) {
+      activeGroupCalls[conversationId].push({
+        socketId: socket.id,
+        userId: user._id || user.id,
+        username: user.username,
+        profilePic: user.profilePic
+      });
+    }
+    
+    console.log(`User ${user.username} joined group call ${conversationId}`);
+    
+    // Notify others in room
+    socket.to(callRoomName).emit('userJoinedGroupCall', {
+      socketId: socket.id,
+      userId: user._id || user.id,
+      user
+    });
+    
+    // Send back current list of participants to the caller
+    const otherParticipants = activeGroupCalls[conversationId].filter(p => p.socketId !== socket.id);
+    socket.emit('groupCallParticipants', otherParticipants);
+  });
+
+  socket.on('inviteGroupCall', (data) => {
+    const { conversationId, participants, fromUser, type, groupName } = data;
+    if (!conversationId || !participants) return;
+    
+    participants.forEach(p => {
+      const pId = p._id || p.id || p;
+      // Do not send invite to self
+      if (String(pId) !== String(socketUserMap[socket.id])) {
+        const targetSocketId = userSocketMap[pId];
+        if (targetSocketId) {
+          console.log(`Sending incomingGroupCall invite for room ${conversationId} to user ${pId} (Socket: ${targetSocketId})`);
+          io.to(targetSocketId).emit('incomingGroupCall', {
+            conversationId,
+            fromUser,
+            type,
+            groupName
+          });
+        }
+      }
+    });
+  });
+
+  socket.on('groupCallOffer', (data) => {
+    const { to, signal, fromUserId, fromUser } = data;
+    console.log(`Relaying groupCallOffer from ${socket.id} to ${to}`);
+    io.to(to).emit('groupCallOffer', {
+      fromSocketId: socket.id,
+      fromUserId,
+      fromUser,
+      signal
+    });
+  });
+
+  socket.on('groupCallAnswer', (data) => {
+    const { to, signal } = data;
+    console.log(`Relaying groupCallAnswer from ${socket.id} to ${to}`);
+    io.to(to).emit('groupCallAnswer', {
+      fromSocketId: socket.id,
+      signal
+    });
+  });
+
+  socket.on('groupCallIceCandidate', (data) => {
+    const { to, candidate } = data;
+    io.to(to).emit('groupCallIceCandidate', {
+      fromSocketId: socket.id,
+      candidate
+    });
+  });
+
+  socket.on('leaveGroupCall', (data) => {
+    const { conversationId } = data;
+    if (!conversationId) return;
+    
+    const callRoomName = `group-call-${conversationId}`;
+    socket.leave(callRoomName);
+    
+    if (activeGroupCalls[conversationId]) {
+      activeGroupCalls[conversationId] = activeGroupCalls[conversationId].filter(p => p.socketId !== socket.id);
+      console.log(`User left group call ${conversationId}. Remaining: ${activeGroupCalls[conversationId].length}`);
+      
+      // Notify others
+      socket.to(callRoomName).emit('userLeftGroupCall', {
+        socketId: socket.id,
+        userId: socketUserMap[socket.id]
+      });
+      
+      if (activeGroupCalls[conversationId].length === 0) {
+        delete activeGroupCalls[conversationId];
+      }
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     connections.delete(socket.id);
+    
+    // Automatically remove user from any active group calls they were in
+    for (const conversationId in activeGroupCalls) {
+      if (activeGroupCalls[conversationId].some(p => p.socketId === socket.id)) {
+        activeGroupCalls[conversationId] = activeGroupCalls[conversationId].filter(p => p.socketId !== socket.id);
+        const callRoomName = `group-call-${conversationId}`;
+        socket.to(callRoomName).emit('userLeftGroupCall', {
+          socketId: socket.id,
+          userId: socketUserMap[socket.id]
+        });
+        
+        if (activeGroupCalls[conversationId].length === 0) {
+          delete activeGroupCalls[conversationId];
+        }
+      }
+    }
+
     const userId = socketUserMap[socket.id];
     if (userId) {
       delete userSocketMap[userId];
       delete socketUserMap[socket.id];
-      // Notify all clients about updated online users
+      // Notify all clients about online users
       io.emit('getOnlineUsers', Object.keys(userSocketMap));
     }
   });
