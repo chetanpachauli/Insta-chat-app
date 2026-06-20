@@ -14,8 +14,8 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Routes
-router.get('/:id', ctrl.getProfile)
 router.get('/me', protect, ctrl.getMyProfile)
+router.get('/:id', ctrl.getProfile)
 router.put('/', 
   protect, 
   upload.single('photo'), // Handle single file upload with field name 'photo'
