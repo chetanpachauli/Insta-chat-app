@@ -59,17 +59,40 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
     if (currentStory) { markViewed(currentStory._id); setImageLoaded(false); }
   }, [currentStory, markViewed]);
 
+  // Reset progress to 0 only when the active story changes
   useEffect(() => {
     setProgress(0);
-    const startTime = Date.now();
-    timerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const pct = Math.min((elapsed / DURATION) * 100, 100);
-      setProgress(pct);
-      if (pct >= 100) next();
-    }, 50);
-    return () => clearInterval(timerRef.current);
-  }, [groupIndex, storyIndex, next]);
+  }, [groupIndex, storyIndex]);
+
+  // Handle story progress timer with pausing support
+  useEffect(() => {
+    if (showViews) return;
+
+    const intervalTime = 50; // ms
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        const nextProgress = prev + (intervalTime / DURATION) * 100;
+        if (nextProgress >= 100) {
+          next();
+          return 100;
+        }
+        return nextProgress;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [groupIndex, storyIndex, showViews, next]);
+
+  // Pause or resume story audio when viewers list is toggled
+  useEffect(() => {
+    if (audioRef.current) {
+      if (showViews) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(e => {});
+      }
+    }
+  }, [showViews]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') next();
@@ -231,8 +254,18 @@ export default function StoryViewer({ storyGroups, initialIndex, currentUserId, 
         {/* Views modal */}
         {showViews && (
           <div className="absolute bottom-20 left-4 right-4 z-30 bg-dark-800/95 backdrop-blur-md rounded-xl border border-dark-700 max-h-48 overflow-y-auto">
-            <div className="p-3 border-b border-dark-700">
+            <div className="p-3 border-b border-dark-700 flex justify-between items-center">
               <p className="text-sm font-semibold">Views ({viewers.length})</p>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowViews(false);
+                }} 
+                className="text-dark-400 hover:text-white transition-colors"
+                title="Close viewers list"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
             </div>
             {viewers.length === 0 ? (
               <p className="text-xs text-dark-400 p-3">No views yet</p>

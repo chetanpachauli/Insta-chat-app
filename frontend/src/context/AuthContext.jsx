@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../utils/axiosConfig';
 
 export const AuthContext = createContext();
 
@@ -23,18 +24,21 @@ function AuthProvider({ children }) {
   axios.defaults.withCredentials = true;
 
   // Add global request interceptor to append authorization header dynamically
-  axios.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
       }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
+    );
+    return () => axios.interceptors.request.eject(requestInterceptor);
+  }, []);
 
   // Axios interceptor for auto-refresh on 401
   useEffect(() => {
@@ -52,6 +56,7 @@ function AuthProvider({ children }) {
                 localStorage.setItem('token', data.accessToken);
                 localStorage.setItem('refreshToken', data.refreshToken);
                 axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+                api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
                 original.headers['Authorization'] = `Bearer ${data.accessToken}`;
                 return axios(original);
               }
@@ -59,7 +64,9 @@ function AuthProvider({ children }) {
           }
           localStorage.clear();
           delete axios.defaults.headers.common['Authorization'];
+          delete api.defaults.headers.common['Authorization'];
           setUser(null);
+          window.location.href = '/login';
         }
         return Promise.reject(err);
       }
@@ -74,6 +81,7 @@ function AuthProvider({ children }) {
       if (accessToken) {
         localStorage.setItem('token', accessToken);
         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
       }
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
@@ -107,6 +115,7 @@ function AuthProvider({ children }) {
 
       if (token) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
 
       const res = await axios.get('/api/auth/check', { timeout: 5000 });
@@ -122,6 +131,7 @@ function AuthProvider({ children }) {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
       return { isAuthenticated: false, user: null };
     }
   }, []);
@@ -203,6 +213,7 @@ const signup = useCallback(async (userData) => {
     } catch { /* ignore */ }
     localStorage.clear();
     delete axios.defaults.headers.common['Authorization'];
+    delete api.defaults.headers.common['Authorization'];
     setUser(null);
     window.location.href = '/login';
   }, []);

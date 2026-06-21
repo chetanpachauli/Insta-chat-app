@@ -27,12 +27,11 @@ export default function Signup() {
   const onChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
   async function uploadToCloudinary(file) {
-    const url = import.meta.env.VITE_CLOUDINARY_URL
-    if (!url) throw new Error('Missing Cloudinary URL')
+    const url = import.meta.env.VITE_CLOUDINARY_URL || 'https://api.cloudinary.com/v1_1/dbplnmenp/image/upload'
     const fd = new FormData()
     fd.append('file', file)
-    const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ''
-    if (preset) fd.append('upload_preset', preset)
+    const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'chat_app_preset'
+    fd.append('upload_preset', preset)
     const res = await fetch(url, { method: 'POST', body: fd })
     const data = await res.json()
     return data.secure_url || data.url

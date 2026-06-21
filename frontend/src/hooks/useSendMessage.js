@@ -8,12 +8,11 @@ export default function useSendMessage() {
   const { sendMessage } = useContext(ChatContext)
 
   const uploadImageToCloudinary = async (file) => {
-    const url = import.meta.env.VITE_CLOUDINARY_URL
-    if (!url) throw new Error('Missing Cloudinary URL')
+    const url = import.meta.env.VITE_CLOUDINARY_URL || 'https://api.cloudinary.com/v1_1/dbplnmenp/image/upload'
     const form = new FormData()
     form.append('file', file)
-    const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ''
-    if (preset) form.append('upload_preset', preset)
+    const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'chat_app_preset'
+    form.append('upload_preset', preset)
     const res = await fetch(url, { method: 'POST', body: form })
     const data = await res.json()
     return data.secure_url || data.url

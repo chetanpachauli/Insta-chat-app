@@ -69,11 +69,15 @@ export default function CreatePost({ onCreated }) {
     console.log('Starting file upload...');
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+    
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'chat_app_preset';
+    const uploadUrl = import.meta.env.VITE_CLOUDINARY_URL || 'https://api.cloudinary.com/v1_1/dbplnmenp/image/upload';
+    
+    formData.append('upload_preset', uploadPreset);
 
     try {
       console.log('Uploading to Cloudinary...');
-      const response = await fetch(import.meta.env.VITE_CLOUDINARY_URL, {
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
       });

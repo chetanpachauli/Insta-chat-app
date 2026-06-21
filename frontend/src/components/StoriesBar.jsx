@@ -4,8 +4,8 @@ import { toast } from 'react-hot-toast';
 import { PlusIcon } from '@heroicons/react/24/solid';
 import StoryViewer from './StoryViewer';
 
-const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dbplnmenp';
+const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'chat_app_preset';
 
 const PRESET_SONGS = [
   { id: '1', name: 'Ambient Gold', artist: 'Chillhop Music', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },

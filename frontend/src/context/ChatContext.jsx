@@ -88,7 +88,16 @@ const ChatProvider = ({ children }) => {
   }, [userId]); // Only depend on userId
 
   const handleMessage = useCallback((message) => {
-    const chatId = String(message.chatId || message.senderId || message.receiverId);
+    const myId = String(userIdRef.current || '');
+    const senderId = String(message.senderId?._id || message.senderId?.id || message.senderId || '');
+    const receiverId = String(message.receiverId?._id || message.receiverId?.id || message.receiverId || '');
+    
+    let chatId;
+    if (message.chatId) {
+      chatId = String(message.chatId);
+    } else {
+      chatId = senderId === myId ? receiverId : senderId;
+    }
     
     if (!chatId) {
       console.error('Received message with no valid chat ID:', message);
@@ -99,7 +108,7 @@ const ChatProvider = ({ children }) => {
       const existingMessageIndex = (prev[chatId] || []).findIndex(
         msg => msg._id === message._id || 
           (msg._id && msg._id.startsWith('temp-') && 
-            msg.senderId === message.senderId && 
+            String(msg.senderId?._id || msg.senderId?.id || msg.senderId) === senderId && 
             msg.createdAt === message.createdAt)
       );
 

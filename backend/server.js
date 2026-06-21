@@ -109,11 +109,13 @@ io.on('connection', (socket) => {
   
   // Handle user authentication
   socket.on('addUser', (userData) => {
-    const userId = userData.userId;
+    const userId = userData?.userId || userData;
     if (userId) {
-      userSocketMap[userId] = socket.id;
-      socketUserMap[socket.id] = userId;
-      console.log(`User ${userId} connected with socket ${socket.id}`);
+      const userIdStr = String(userId);
+      socket.join(userIdStr); // Join the userId room!
+      userSocketMap[userIdStr] = socket.id;
+      socketUserMap[socket.id] = userIdStr;
+      console.log(`User ${userIdStr} connected with socket ${socket.id} (joined room)`);
       
       // Notify all clients about online users
       io.emit('getOnlineUsers', Object.keys(userSocketMap));
@@ -123,67 +125,66 @@ io.on('connection', (socket) => {
   // Handle new message
   socket.on('sendMessage', async (data) => {
     try {
-      const { senderId, receiverId, message, image, audio } = data;
+      const senderIdObj = data.senderId;
+      const receiverIdObj = data.receiverId;
       
-      // Save message to database (handled by API)
-      // Just forward the message to the recipient
-      const receiverSocketId = userSocketMap[receiverId];
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit('newMessage', {
-          senderId,
-          receiverId,
-          message,
-          image,
-          audio: audio || '',
-          createdAt: new Date()
-        });
-      }
+      const senderId = String(senderIdObj?._id || senderIdObj?.id || senderIdObj);
+      const receiverId = String(receiverIdObj?._id || receiverIdObj?.id || receiverIdObj);
       
-      // Also send back to sender for UI update
-      const senderSocketId = userSocketMap[senderId];
-      if (senderSocketId && senderSocketId !== receiverSocketId) {
-        io.to(senderSocketId).emit('newMessage', {
-          senderId,
-          receiverId,
-          message,
-          image,
-          audio: audio || '',
-          createdAt: new Date()
-        });
-      }
+      const { message, image, audio } = data;
+      
+      const messageData = {
+        ...data,
+        senderId,
+        receiverId,
+        message: message || '',
+        image: image || null,
+        audio: audio || '',
+        createdAt: data.createdAt || new Date()
+      };
+
+      // Forward to receiver (via user ID room)
+      io.to(receiverId).emit('newMessage', messageData);
+      
+      // Also send back to sender (via user ID room) for other sessions/tabs
+      io.to(senderId).emit('newMessage', messageData);
     } catch (error) {
       console.error('Error handling sendMessage:', error);
     }
   });
 
-  // Handle typing indicators
-  socket.on('typing', ({ from, to }) => {
-    const toSocketId = userSocketMap[to];
-    if (toSocketId) {
-      io.to(toSocketId).emit('typing', { from });
+  // Handle typing indicators (supports { from, to } and { chatId, userId })
+  socket.on('typing', (data) => {
+    const from = String(data.from || data.userId || '');
+    const to = String(data.to || data.chatId || '');
+    if (to) {
+      io.to(to).emit('typing', { from, chatId: from, userId: from });
     }
   });
 
-  socket.on('stopTyping', ({ from, to }) => {
-    const toSocketId = userSocketMap[to];
-    if (toSocketId) {
-      io.to(toSocketId).emit('stopTyping', { from });
+  socket.on('stopTyping', (data) => {
+    const from = String(data.from || data.userId || '');
+    const to = String(data.to || data.chatId || '');
+    if (to) {
+      io.to(to).emit('stopTyping', { from, chatId: from, userId: from });
     }
   });
 
   // Handle message deletion
   socket.on('deleteMessage', ({ messageId, senderId, receiverId }) => {
-    const receiverSocketId = userSocketMap[receiverId];
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit('messageDeleted', { messageId, senderId });
+    const receiverIdStr = String(receiverId?._id || receiverId?.id || receiverId || '');
+    const senderIdStr = String(senderId?._id || senderId?.id || senderId || '');
+    if (receiverIdStr) {
+      io.to(receiverIdStr).emit('messageDeleted', { messageId, senderId: senderIdStr });
     }
   });
 
   // Handle mark seen
   socket.on('markSeen', ({ userId, otherId }) => {
-    const otherSocketId = userSocketMap[otherId];
-    if (otherSocketId) {
-      io.to(otherSocketId).emit('messageSeen', { seenBy: userId, chatId: otherId });
+    const otherIdStr = String(otherId?._id || otherId?.id || otherId || '');
+    const userIdStr = String(userId?._id || userId?.id || userId || '');
+    if (otherIdStr) {
+      io.to(otherIdStr).emit('messageSeen', { seenBy: userIdStr, chatId: otherIdStr });
     }
   });
 
@@ -216,72 +217,61 @@ io.on('connection', (socket) => {
   // WebRTC Calling signaling
   socket.on('callUser', (data) => {
     const { userToCall, signalData, from, fromUser, type } = data;
-    const receiverSocketId = userSocketMap[userToCall];
+    const receiverId = String(userToCall?._id || userToCall?.id || userToCall);
+    const receiverSocketId = userSocketMap[receiverId];
     if (receiverSocketId) {
-      console.log(`Forwarding call from ${from} to user ${userToCall} (Socket: ${receiverSocketId})`);
-      io.to(receiverSocketId).emit('incomingCall', {
+      console.log(`Forwarding call from ${from} to user ${receiverId} (Room: ${receiverId})`);
+      io.to(receiverId).emit('incomingCall', {
         signal: signalData,
         from,
         fromUser,
         type
       });
     } else {
-      console.log(`Call failed: User ${userToCall} is offline`);
-      socket.emit('callOffline', { to: userToCall });
+      console.log(`Call failed: User ${receiverId} is offline`);
+      socket.emit('callOffline', { to: receiverId });
     }
   });
 
   socket.on('answerCall', (data) => {
     const { to, signal } = data;
-    const callerSocketId = userSocketMap[to];
-    if (callerSocketId) {
-      console.log(`Forwarding call answer to user ${to} (Socket: ${callerSocketId})`);
-      io.to(callerSocketId).emit('callAccepted', { signal });
-    }
+    const callerId = String(to?._id || to?.id || to);
+    console.log(`Forwarding call answer to user ${callerId}`);
+    io.to(callerId).emit('callAccepted', { signal });
   });
 
   socket.on('iceCandidate', (data) => {
     const { to, candidate } = data;
-    const recipientSocketId = userSocketMap[to];
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('iceCandidate', { candidate });
-    }
+    const recipientId = String(to?._id || to?.id || to);
+    io.to(recipientId).emit('iceCandidate', { candidate });
   });
 
   socket.on('rejectCall', (data) => {
     const { to } = data;
-    const callerSocketId = userSocketMap[to];
-    if (callerSocketId) {
-      console.log(`Forwarding call reject to user ${to}`);
-      io.to(callerSocketId).emit('callRejected');
-    }
+    const callerId = String(to?._id || to?.id || to);
+    console.log(`Forwarding call reject to user ${callerId}`);
+    io.to(callerId).emit('callRejected');
   });
 
   socket.on('endCall', (data) => {
     const { to } = data;
-    const otherSocketId = userSocketMap[to];
-    if (otherSocketId) {
-      console.log(`Forwarding call end to user ${to}`);
-      io.to(otherSocketId).emit('callEnded');
-    }
+    const otherId = String(to?._id || to?.id || to);
+    console.log(`Forwarding call end to user ${otherId}`);
+    io.to(otherId).emit('callEnded');
   });
 
   socket.on('cancelCall', (data) => {
     const { to } = data;
-    const receiverSocketId = userSocketMap[to];
-    if (receiverSocketId) {
-      console.log(`Forwarding call cancel to user ${to}`);
-      io.to(receiverSocketId).emit('callCancelled');
-    }
+    const receiverId = String(to?._id || to?.id || to);
+    console.log(`Forwarding call cancel to user ${receiverId}`);
+    io.to(receiverId).emit('callCancelled');
   });
 
   socket.on('busyCall', (data) => {
     const { to } = data;
-    const callerSocketId = userSocketMap[to];
-    if (callerSocketId) {
-      console.log(`Forwarding call busy to user ${to}`);
-      io.to(callerSocketId).emit('callBusy');
-    }
+    const callerId = String(to?._id || to?.id || to);
+    console.log(`Forwarding call busy to user ${callerId}`);
+    io.to(callerId).emit('callBusy');
   });
 
   // Group Call signaling events
@@ -330,8 +320,8 @@ io.on('connection', (socket) => {
       if (String(pId) !== String(socketUserMap[socket.id])) {
         const targetSocketId = userSocketMap[pId];
         if (targetSocketId) {
-          console.log(`Sending incomingGroupCall invite for room ${conversationId} to user ${pId} (Socket: ${targetSocketId})`);
-          io.to(targetSocketId).emit('incomingGroupCall', {
+          console.log(`Sending incomingGroupCall invite for room ${conversationId} to user ${pId} (Room: ${pId})`);
+          io.to(String(pId)).emit('incomingGroupCall', {
             conversationId,
             fromUser,
             type,
