@@ -188,12 +188,20 @@ const PostDetails = () => {
 
           {/* Comments */}
           <div className="space-y-2 max-h-60 overflow-y-auto scrollbar-thin">
-            {post.comments?.map(comment => (
-              <div key={comment._id} className="text-sm">
-                <span className="font-semibold mr-2">{comment.user?.username || comment.author?.username || 'User'}</span>
-                <span className="text-dark-200">{comment.text}</span>
-              </div>
-            ))}
+            {post.comments?.map(comment => {
+              const commentUser = comment.author || comment.user;
+              return (
+                <div key={comment._id} className="text-sm">
+                  <span 
+                    onClick={() => commentUser?.username && navigate(`/profile/${commentUser.username}`)}
+                    className="font-semibold mr-2 cursor-pointer hover:underline text-white"
+                  >
+                    {commentUser?.username || 'User'}
+                  </span>
+                  <span className="text-dark-200">{comment.text}</span>
+                </div>
+              );
+            })}
           </div>
 
           <p className="text-xs text-dark-400">

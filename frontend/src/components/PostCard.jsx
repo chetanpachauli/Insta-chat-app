@@ -104,9 +104,16 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
     >
       {/* Header */}
       <div className="p-3 flex items-center gap-3">
-        <Avatar user={post.author} size="md" />
+        <div onClick={() => post.author?.username && navigate(`/profile/${post.author.username}`)} className="cursor-pointer">
+          <Avatar user={post.author} size="md" />
+        </div>
         <div className="flex-1">
-          <div className="font-semibold text-sm">{post.author?.username}</div>
+          <div 
+            onClick={() => post.author?.username && navigate(`/profile/${post.author.username}`)} 
+            className="font-semibold text-sm cursor-pointer hover:underline"
+          >
+            {post.author?.username}
+          </div>
           <div className="text-xs text-dark-400">{new Date(post.createdAt).toLocaleString()}</div>
         </div>
         {isOwner && (
@@ -214,19 +221,32 @@ function PostCard({ post, onLikeChanged, onDeleted }) {
           </div>
         ) : (
           <div className="text-sm mb-2">
-            <span className="font-semibold mr-1.5">{post.author?.username}</span>
+            <span 
+              onClick={() => post.author?.username && navigate(`/profile/${post.author.username}`)}
+              className="font-semibold mr-1.5 cursor-pointer hover:underline"
+            >
+              {post.author?.username}
+            </span>
             {post.caption}
           </div>
         )}
 
         {/* Comments */}
         <div className="space-y-1.5 mb-2">
-          {comments.slice(0, 3).map(c => (
-            <div key={c._id} className="text-sm text-dark-200">
-              <strong className="mr-1.5 text-white">{c.author?.username || 'User'}</strong>
-              {c.text}
-            </div>
-          ))}
+          {comments.slice(0, 3).map(c => {
+            const commentUser = c.author || c.user;
+            return (
+              <div key={c._id} className="text-sm text-dark-200">
+                <strong 
+                  onClick={() => commentUser?.username && navigate(`/profile/${commentUser.username}`)}
+                  className="mr-1.5 text-white cursor-pointer hover:underline font-semibold"
+                >
+                  {commentUser?.username || 'User'}
+                </strong>
+                {c.text}
+              </div>
+            );
+          })}
           {comments.length > 3 && (
             <button className="text-xs text-dark-400 hover:text-dark-300">
               View all {comments.length} comments

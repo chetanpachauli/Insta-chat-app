@@ -184,7 +184,7 @@ export default function Layout({ children }) {
           </div>
         )}
 
-        <main className="flex-1">
+        <main className={`flex-1 ${isMobile ? 'pb-20' : ''}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

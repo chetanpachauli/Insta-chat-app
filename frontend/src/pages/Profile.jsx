@@ -20,7 +20,8 @@ import {
   PhotoIcon,
   ArrowRightOnRectangleIcon,
   TrashIcon,
-  ArchiveBoxIcon
+  ArchiveBoxIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid, BookmarkIcon as BookmarkIconSolid, PlusIcon } from '@heroicons/react/24/solid';
 import { Dialog, Transition } from '@headlessui/react';
@@ -478,6 +479,17 @@ const Profile = () => {
   const [error, setError] = useState(null);
   const [tab, setTab] = useState('posts');
   const [editing, setEditing] = useState(false);
+  const [isViewingDP, setIsViewingDP] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsViewingDP(false);
+    };
+    if (isViewingDP) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isViewingDP]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [savedPostsLoading, setSavedPostsLoading] = useState(false);
   const [form, setForm] = useState({
@@ -818,8 +830,11 @@ const Profile = () => {
       <div className="p-4 mt-4 card">
         <div className="flex items-start gap-4 md:gap-6 mb-4 md:mb-6">
           {/* Profile Picture */}
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-brand p-[2px]">
+          <div 
+            className="relative shrink-0 cursor-pointer"
+            onClick={() => profile?.profilePic && setIsViewingDP(true)}
+          >
+            <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-gradient-brand p-[2px] transition-transform duration-300 hover:scale-105">
               <div className="bg-dark-900 rounded-full w-full h-full">
                 {profile?.profilePic ? (
                   <img
@@ -1236,6 +1251,36 @@ const Profile = () => {
           </div>
         </Dialog>
       </Transition>
+
+      {/* Profile Picture Lightbox Modal */}
+      {isViewingDP && profile?.profilePic && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsViewingDP(false)}
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setIsViewingDP(false)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all z-[110]"
+            aria-label="Close photo viewer"
+          >
+            <XMarkIcon className="w-8 h-8" />
+          </button>
+          
+          {/* Image container */}
+          <div 
+            className="relative max-w-full max-h-[85vh] md:max-h-[90vh] bg-dark-900 rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={profile.profilePic} 
+              alt={profile.username}
+              className="max-w-full max-h-[85vh] md:max-h-[90vh] object-contain rounded-2xl"
+              onError={(e) => { e.target.onerror = null; e.target.src = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'; }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

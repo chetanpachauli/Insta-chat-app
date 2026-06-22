@@ -16,12 +16,10 @@ export default function CloseFriends() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userRes = await api.get('/auth/me');
+        const userRes = await api.get('/profile/me');
         setCurrentUser(userRes.data);
-        setCloseFriends(userRes.data.closeFriends || []);
-
-        const followingRes = await api.get(`/profile/${userRes.data._id}/following`);
-        setFollowing(followingRes.data || []);
+        setCloseFriends((userRes.data.closeFriends || []).map(x => String(x._id || x)));
+        setFollowing(userRes.data.following || []);
       } catch (err) {
         toast.error('Failed to load data');
       } finally {

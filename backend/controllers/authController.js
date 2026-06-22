@@ -292,3 +292,38 @@ exports.googleLogin = async (req, res) => {
     res.status(500).json({ message: 'Google login failed' });
   }
 };
+
+// PUT /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // If user has a password set (non-empty), verify current password
+    if (user.password) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to change password' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Incorrect current password' });
+      }
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ message: 'Server error changing password' });
+  }
+};

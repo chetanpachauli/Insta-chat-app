@@ -27,4 +27,7 @@ router.post('/google', authCtrl.googleLogin);
 // DELETE /api/auth/delete-account
 router.delete('/delete-account', protect, authCtrl.deleteAccount);
 
+// PUT /api/auth/change-password
+router.put('/change-password', protect, authCtrl.changePassword);
+
 module.exports = router;

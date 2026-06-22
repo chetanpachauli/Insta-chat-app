@@ -1,4 +1,5 @@
 import React, { memo, useContext, useEffect, useRef, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ChatContext from '../context/ChatContext';
 import AuthContext from '../context/AuthContext';
 import { Trash2, Users, Play, Pause, ArrowLeft, Phone, Video } from 'lucide-react';
@@ -110,6 +111,7 @@ const AudioMessagePlayer = memo(function AudioMessagePlayer({ src }) {
 });
 
 const ChatWindow = memo(function ChatWindow({ chat, auth }) {
+  const navigate = useNavigate();
   const { selectedChat, messages, deleteMessage, onlineUsers, typingUsers, fetchMessages, setSelectedChat } = chat || {};
   const { user } = auth || {};
   const { startCall, startGroupCall, joinActiveGroupCall } = useCall();
@@ -209,15 +211,23 @@ const ChatWindow = memo(function ChatWindow({ chat, auth }) {
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
-            {selectedChat?.isGroup ? (
+            {!selectedChat?.isGroup ? (
+              <div 
+                onClick={() => selectedChat?.username && navigate(`/profile/${selectedChat.username}`)}
+                className="cursor-pointer"
+              >
+                {renderAvatar(selectedChat)}
+              </div>
+            ) : (
               <div className="w-10 h-10 rounded-full bg-gradient-brand flex items-center justify-center text-white ring-2 ring-dark-700 shrink-0">
                 <Users className="w-5 h-5" />
               </div>
-            ) : (
-              renderAvatar(selectedChat)
             )}
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm truncate">
+              <h2 
+                onClick={() => !selectedChat?.isGroup && selectedChat?.username && navigate(`/profile/${selectedChat.username}`)}
+                className={`font-semibold text-sm truncate ${!selectedChat?.isGroup ? 'cursor-pointer hover:underline' : ''}`}
+              >
                 {selectedChat?.isGroup ? selectedChat?.groupName : (selectedChat?.username || 'Unknown User')}
               </h2>
               {selectedChat?.isGroup ? (
