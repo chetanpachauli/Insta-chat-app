@@ -294,14 +294,18 @@ export const CallProvider = ({ children }) => {
 
   // Initiate a 1-to-1 call
   const startCall = useCallback(async (targetUser, type) => {
+    console.log('--- WebRTC CALL SYSTEM: startCall initiated ---');
+    console.log('Target User:', targetUser, 'Call Type:', type);
     const socket = getSocket();
     if (!socket) {
+      console.error('Call failed: Socket client is not initialized or connected');
       toast.error('Chat server disconnected. Try again in a moment.');
       return;
     }
 
     const targetUserId = targetUser?._id || targetUser?.id;
     if (!targetUserId) {
+      console.error('Call failed: targetUserId could not be determined');
       toast.error('Cannot call: Invalid user');
       return;
     }
@@ -321,7 +325,9 @@ export const CallProvider = ({ children }) => {
         video: type === 'video'
       };
 
+      console.log('Requesting media devices with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Local media stream successfully captured:', stream.id);
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -331,13 +337,17 @@ export const CallProvider = ({ children }) => {
       }
 
       // Create WebRTC Peer Connection
+      console.log('Creating PeerConnection for receiver:', targetUserId);
       const pc = createPeerConnection(targetUserId, socket);
 
       // Create SDP offer
+      console.log('Creating SDP Offer...');
       const offer = await pc.createOffer();
+      console.log('Setting Local Description (Offer SDP)...');
       await pc.setLocalDescription(offer);
 
       // Emit call initiation
+      console.log('Emitting callUser socket event to backend for user:', targetUserId);
       socket.emit('callUser', {
         userToCall: targetUserId,
         signalData: offer,
@@ -352,6 +362,7 @@ export const CallProvider = ({ children }) => {
 
       // 30 seconds call timeout (missed call)
       callingTimeoutRef.current = setTimeout(() => {
+        console.warn('Call callingTimeoutRef triggered: No response after 30 seconds');
         toast.error('No answer');
         socket.emit('cancelCall', { to: targetUserId });
         saveCallMessage(`📞 Missed ${type} call`);
@@ -359,7 +370,7 @@ export const CallProvider = ({ children }) => {
       }, 30000);
 
     } catch (err) {
-      console.error('Error starting media stream:', err);
+      console.error('Error starting media stream / WebRTC offer creation:', err);
       toast.error('Failed to access camera or microphone. Please check permissions.');
       resetCallState();
     }
@@ -519,8 +530,12 @@ export const CallProvider = ({ children }) => {
 
   // Accept incoming call
   const acceptCall = useCallback(async () => {
+    console.log('--- WebRTC CALL SYSTEM: acceptCall triggered ---');
     const socket = getSocket();
-    if (!socket || !callerInfo) return;
+    if (!socket || !callerInfo) {
+      console.error('acceptCall aborted: socket client is null or callerInfo is missing');
+      return;
+    }
 
     sounds.stop();
     setCallState('connecting');
@@ -531,7 +546,9 @@ export const CallProvider = ({ children }) => {
         video: callType === 'video'
       };
 
+      console.log('Requesting media devices to answer call with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('Answer media stream successfully captured:', stream.id);
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -540,21 +557,26 @@ export const CallProvider = ({ children }) => {
         localVideoRef.current.srcObject = stream;
       }
 
+      console.log('Creating PeerConnection for caller:', callerInfo._id);
       const pc = createPeerConnection(callerInfo._id, socket);
 
       // Set caller's SDP offer
+      console.log('Setting Remote Description (Offer SDP)...');
       await pc.setRemoteDescription(new RTCSessionDescription(callerInfo.signal));
       flushIceCandidates();
 
       // Create answer
+      console.log('Creating SDP Answer...');
       const answer = await pc.createAnswer();
+      console.log('Setting Local Description (Answer SDP)...');
       await pc.setLocalDescription(answer);
 
       // Emit accepted signal
+      console.log('Emitting answerCall socket event to caller:', callerInfo._id);
       socket.emit('answerCall', { to: callerInfo._id, signal: answer });
 
     } catch (err) {
-      console.error('Error accepting call:', err);
+      console.error('Error accepting incoming call:', err);
       toast.error('Failed to access camera/mic.');
       socket.emit('rejectCall', { to: callerInfo._id });
       resetCallState();
@@ -655,9 +677,12 @@ export const CallProvider = ({ children }) => {
     if (!socket || !isConnected) return;
 
     const handleIncomingCall = (data) => {
+      console.log('--- WebRTC CALL SYSTEM: incomingCall socket event received ---');
+      console.log('Incoming call details:', data);
+      
       // If already in a call, send busy signal automatically
       if (callStateRef.current || isGroupCallRef.current) {
-        console.log('Incoming call ignored: User busy');
+        console.log('Incoming call ignored: User busy. active callState:', callStateRef.current, 'isGroupCall:', isGroupCallRef.current);
         socket.emit('busyCall', { to: data.from });
         return;
       }
@@ -665,6 +690,7 @@ export const CallProvider = ({ children }) => {
       sounds.init();
       sounds.playRing();
 
+      console.log('Setting callState to incoming, callerInfo:', data.fromUser?.username);
       setCallState('incoming');
       setCallType(data.type);
       setCallerInfo({
@@ -1068,7 +1094,7 @@ export const CallProvider = ({ children }) => {
         <ActiveCallOverlay
           callState={callState}
           callType={callType}
-          partnerInfo={callState === 'dialing' ? receiverInfo : callerInfo}
+          partnerInfo={receiverInfo || callerInfo}
           localStream={localStream}
           remoteStream={remoteStream}
           duration={duration}
