@@ -134,12 +134,12 @@ export default function CreatePost({ onCreated }) {
 
       // Upload to Cloudinary
       console.log('Uploading file to Cloudinary...');
-      const { url: mediaUrl, type: mediaType } = await uploadToCloudinary(uploadFile);
+      const { url: mediaUrl, type: uploadedMediaType } = await uploadToCloudinary(uploadFile);
       
       // Create post in the database
       console.log('Creating post in database...', {
         image: mediaUrl,
-        mediaType,
+        mediaType: uploadedMediaType,
         caption: caption.trim()
       });
 
@@ -147,7 +147,7 @@ export default function CreatePost({ onCreated }) {
         `${import.meta.env.VITE_API_URL}/api/posts`,
         {
           image: mediaUrl,
-          mediaType,
+          mediaType: uploadedMediaType,
           caption: caption.trim(),
         },
         {

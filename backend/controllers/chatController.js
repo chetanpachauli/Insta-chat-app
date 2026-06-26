@@ -201,16 +201,87 @@ exports.getUsersForSidebar = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // 1. Fetch all other users
     const users = await User.find({ _id: { $ne: userId } })
       .select('-password')
       .lean();
 
+    // 2. Fetch all 1-on-1 messages involving the current user, sorted by newest first
+    const messages = await Message.find({
+      conversationId: { $exists: false },
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .lean();
+
+    // Group messages by other user and compute unread counts
+    const latestMessages = {};
+    const unreadCounts = {};
+
+    messages.forEach(msg => {
+      const otherUserId = msg.senderId.toString() === userId.toString()
+        ? msg.receiverId.toString()
+        : msg.senderId.toString();
+
+      if (!latestMessages[otherUserId]) {
+        latestMessages[otherUserId] = msg;
+      }
+
+      // Count unread messages received by the current user
+      if (msg.receiverId.toString() === userId.toString() && !msg.isSeen) {
+        unreadCounts[otherUserId] = (unreadCounts[otherUserId] || 0) + 1;
+      }
+    });
+
+    // Format user objects with last message details
+    const usersWithMessages = users.map(u => {
+      const uId = u._id.toString();
+      const lastMsg = latestMessages[uId];
+      return {
+        ...u,
+        lastMessage: lastMsg ? lastMsg.message || (lastMsg.image ? '📷 Image' : (lastMsg.audio ? '🎵 Audio' : '')) : '',
+        lastMessageAt: lastMsg ? lastMsg.createdAt : null,
+        unreadCount: unreadCounts[uId] || 0
+      };
+    });
+
+    // 3. Fetch group conversations involving the current user
     const groups = await Conversation.find({ participants: userId, isGroup: true })
       .populate('participants', 'username profilePic')
-      .populate('lastMessage')
+      .populate({
+        path: 'lastMessage',
+        populate: { path: 'senderId', select: 'username' }
+      })
       .lean();
 
-    res.json([...users, ...groups]);
+    // Format group objects with last message details
+    const groupsFormatted = groups.map(g => {
+      const lastMsg = g.lastMessage;
+      let lastMsgText = '';
+      if (lastMsg) {
+        const senderName = lastMsg.senderId?.username || 'User';
+        lastMsgText = `${senderName}: ${lastMsg.message || (lastMsg.image ? '📷 Image' : (lastMsg.audio ? '🎵 Audio' : ''))}`;
+      }
+      return {
+        ...g,
+        lastMessage: lastMsgText || 'Group created',
+        lastMessageAt: lastMsg ? lastMsg.createdAt : g.createdAt,
+        unreadCount: 0 // Group unread count placeholder
+      };
+    });
+
+    // Combine users and groups, sorting by lastMessageAt descending
+    const combined = [...usersWithMessages, ...groupsFormatted];
+    combined.sort((a, b) => {
+      const dateA = a.lastMessageAt ? new Date(a.lastMessageAt) : new Date(0);
+      const dateB = b.lastMessageAt ? new Date(b.lastMessageAt) : new Date(0);
+      return dateB - dateA;
+    });
+
+    res.json(combined);
   } catch (error) {
     console.error('Error fetching sidebar data:', error);
     res.status(500).json({ error: 'Error fetching sidebar data' });

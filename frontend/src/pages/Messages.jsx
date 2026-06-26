@@ -27,6 +27,25 @@ const Messages = () => {
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [showGroupModal, setShowGroupModal] = useState(false);
 
+  const formatLastMessageTime = useCallback((timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((nowDay - dateDay) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }, []);
+
   const {
     sidebarUsers = [],
     selectedChat,
@@ -143,20 +162,25 @@ const Messages = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center">
-                            <h3 className="font-medium text-sm truncate">
+                            <h3 className={`text-sm truncate ${u.unreadCount > 0 ? 'font-bold text-white' : 'font-medium text-dark-100'}`}>
                               {u.isGroup ? (u.groupName || 'Group') : (u?.username || 'Unknown User')}
                             </h3>
-                            {u.isGroup ? (
-                              <span className="text-[10px] text-dark-400 shrink-0 ml-2">
-                                {u.participants?.length || 0} members
+                            <div className="flex flex-col items-end shrink-0 ml-2">
+                              <span className={`text-[10px] ${u.unreadCount > 0 ? 'text-brand-400 font-semibold' : 'text-dark-400'}`}>
+                                {u.isGroup ? (
+                                  u.lastMessageAt ? formatLastMessageTime(u.lastMessageAt) : `${u.participants?.length || 0} members`
+                                ) : (
+                                  formatLastMessageTime(u.lastMessageAt)
+                                )}
                               </span>
-                            ) : (
-                              <span className="text-[10px] text-dark-400 shrink-0 ml-2">
-                                {u.lastMessageAt ? new Date(u.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                            )}
+                              {u.unreadCount > 0 && (
+                                <span className="mt-1.5 bg-brand-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[16px] h-4 flex items-center justify-center animate-scale-in">
+                                  {u.unreadCount}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xs text-dark-400 truncate">
+                          <p className={`text-xs truncate ${u.unreadCount > 0 ? 'text-white font-semibold' : 'text-dark-400'}`}>
                             {u.isGroup ? (u.lastMessage || 'Group created') : (u?.lastMessage || 'No messages yet')}
                           </p>
                         </div>

@@ -36,6 +36,11 @@ const ChatProvider = ({ children }) => {
     }
   }, [userId]);
 
+  const selectedChatRef = useRef(selectedChat);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
   const fetchSidebarUsers = useCallback(async () => {
     const currentUserId = userIdRef.current;
     
@@ -130,9 +135,38 @@ const ChatProvider = ({ children }) => {
         };
       }
     });
+
+    // Update sidebar users list in real-time
+    setSidebarUsers(prev => {
+      const updated = prev.map(u => {
+        const uId = String(u._id || u.id);
+        if (uId === chatId) {
+          const isActiveChat = selectedChatRef.current && String(selectedChatRef.current._id || selectedChatRef.current.id) === chatId;
+          const isMsgFromMe = senderId === myId;
+          const increment = (!isActiveChat && !isMsgFromMe) ? 1 : 0;
+          
+          return {
+            ...u,
+            lastMessage: message.message || (message.image ? '📷 Image' : (message.audio ? '🎵 Audio' : '')),
+            lastMessageAt: message.createdAt || new Date().toISOString(),
+            unreadCount: (u.unreadCount || 0) + increment
+          };
+        }
+        return u;
+      });
+
+      // Sort sidebar list by latest message timestamp
+      return [...updated].sort((a, b) => {
+        const dateA = a.lastMessageAt ? new Date(a.lastMessageAt) : new Date(0);
+        const dateB = b.lastMessageAt ? new Date(b.lastMessageAt) : new Date(0);
+        return dateB - dateA;
+      });
+    });
   }, []);
 
   const handleGroupMessage = useCallback((message) => {
+    const myId = String(userIdRef.current || '');
+    const senderId = String(message.senderId?._id || message.senderId?.id || message.senderId || '');
     const chatId = String(message.conversationId || message.receiverId);
     if (!chatId) return;
 
@@ -158,6 +192,36 @@ const ChatProvider = ({ children }) => {
           [chatId]: [...(prev[chatId] || []), message]
         };
       }
+    });
+
+    // Update sidebar users list in real-time
+    setSidebarUsers(prev => {
+      const updated = prev.map(u => {
+        const uId = String(u._id || u.id);
+        if (uId === chatId) {
+          const isActiveChat = selectedChatRef.current && String(selectedChatRef.current._id || selectedChatRef.current.id) === chatId;
+          const isMsgFromMe = senderId === myId;
+          const increment = (!isActiveChat && !isMsgFromMe) ? 1 : 0;
+          
+          const senderName = message.senderId?.username || 'User';
+          const msgText = `${senderName}: ${message.message || (message.image ? '📷 Image' : (message.audio ? '🎵 Audio' : ''))}`;
+
+          return {
+            ...u,
+            lastMessage: msgText,
+            lastMessageAt: message.createdAt || new Date().toISOString(),
+            unreadCount: (u.unreadCount || 0) + increment
+          };
+        }
+        return u;
+      });
+
+      // Sort sidebar list by latest message timestamp
+      return [...updated].sort((a, b) => {
+        const dateA = a.lastMessageAt ? new Date(a.lastMessageAt) : new Date(0);
+        const dateB = b.lastMessageAt ? new Date(b.lastMessageAt) : new Date(0);
+        return dateB - dateA;
+      });
     });
   }, []);
 
@@ -369,6 +433,15 @@ const ChatProvider = ({ children }) => {
     const chatId = selectedChat?._id || selectedChat?.id;
     if (!chatId || !userIdRef.current) return;
     
+    // Clear unread count for the selected user/group immediately in local state
+    setSidebarUsers(prev => prev.map(u => {
+      const uId = String(u._id || u.id);
+      if (uId === String(chatId)) {
+        return { ...u, unreadCount: 0 };
+      }
+      return u;
+    }));
+
     const timeout = setTimeout(async () => {
       try {
         await api.post(`/messages/seen/${chatId}`);
