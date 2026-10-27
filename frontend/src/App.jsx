@@ -9,20 +9,36 @@ import Layout from './components/Layout';
 
 import { ConfirmProvider } from './hooks/useConfirm';
 
-const Home = lazy(() => import('./pages/Home'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
-const Profile = lazy(() => import('./pages/Profile'));
-const Feed = lazy(() => import('./pages/Feed'));
-const Explore = lazy(() => import('./pages/Explore'));
-const Search = lazy(() => import('./pages/Search'));
-const Reels = lazy(() => import('./pages/Reels'));
-const Messages = lazy(() => import('./pages/Messages'));
-const Notifications = lazy(() => import('./pages/Notifications'));
-const CreatePostPage = lazy(() => import('./pages/CreatePostPage'));
-  const PostDetails = lazy(() => import('./pages/PostDetails'));
-  const Settings = lazy(() => import('./pages/Settings'));
-  const CloseFriends = lazy(() => import('./pages/CloseFriends'));
+const lazyRetry = (fn) =>
+  lazy(async () => {
+    try {
+      return await fn();
+    } catch (error) {
+      const isReloaded = sessionStorage.getItem('chunk_reload');
+      if (!isReloaded) {
+        sessionStorage.setItem('chunk_reload', 'true');
+        window.location.reload();
+        return new Promise(() => {}); // Wait for reload
+      }
+      sessionStorage.removeItem('chunk_reload');
+      throw error;
+    }
+  });
+
+const Home = lazyRetry(() => import('./pages/Home'));
+const Login = lazyRetry(() => import('./pages/Login'));
+const Signup = lazyRetry(() => import('./pages/Signup'));
+const Profile = lazyRetry(() => import('./pages/Profile'));
+const Feed = lazyRetry(() => import('./pages/Feed'));
+const Explore = lazyRetry(() => import('./pages/Explore'));
+const Search = lazyRetry(() => import('./pages/Search'));
+const Reels = lazyRetry(() => import('./pages/Reels'));
+const Messages = lazyRetry(() => import('./pages/Messages'));
+const Notifications = lazyRetry(() => import('./pages/Notifications'));
+const CreatePostPage = lazyRetry(() => import('./pages/CreatePostPage'));
+const PostDetails = lazyRetry(() => import('./pages/PostDetails'));
+const Settings = lazyRetry(() => import('./pages/Settings'));
+const CloseFriends = lazyRetry(() => import('./pages/CloseFriends'));
 
 function LoadingSpinner() {
   return (

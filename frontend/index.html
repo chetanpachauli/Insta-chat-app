@@ -15,9 +15,17 @@
   <body class="bg-dark-900 text-white">
     <div id="root"></div>
     <script>
+      // Clean up any stale service workers and caches
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          for (const name of names) caches.delete(name);
         });
       }
     </script>
